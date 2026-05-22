@@ -107,17 +107,6 @@ export async function exportEditedPdf(
     const pageElements = elements.filter(el => el.pageIndex === originalPageIndex);
     console.log(`[EXPORT DEBUG] Page ${visualPageIndex} has ${pageElements.length} elements.`);
     
-    // HARD TEST: Draw a huge red rectangle on every page
-    console.log("[DEBUG] Drawing HARD TEST red rectangle on page:", visualPageIndex);
-    try {
-      newPage.drawRectangle({
-        x: 10, y: 10, width: 200, height: 200, color: rgb(1, 0, 0), opacity: 1.0
-      });
-      console.log("[DEBUG] Hard test rectangle drawn successfully");
-    } catch (e) {
-      console.error("[DEBUG ERROR] Hard test rectangle failed:", e);
-    }
-    
     for (const el of pageElements) {
       console.log(`[EXPORT DEBUG] Processing element: id=${el.id}, type=${el.type}, shapeType=${el.shapeType}`);
       // Calculate coordinates in PDF Points space (origin bottom-left)
@@ -159,6 +148,8 @@ export async function exportEditedPdf(
         }
       }
       
+      console.log("[EXPORT ELEMENT]", JSON.stringify(el, null, 2));
+
       if (el.type === 'text' && el.text) {
         // Font Selection
         let fontKey = 'Helvetica';
@@ -218,12 +209,10 @@ export async function exportEditedPdf(
           return hexToRgb(colStr);
         };
         
-        // FORCE STYLE TEST AS REQUESTED BY USER
-        console.log("[DEBUG] Forcing shape styles (RED FILL, BLACK STROKE, OPACITY 1)");
-        const drawFill = rgb(1, 0, 0); // Force Red
-        const drawStroke = rgb(0, 0, 0); // Force Black
-        const drawFillOpacity = 1.0;
-        const drawStrokeOpacity = 1.0;
+        const drawFill = parseColor(el.fillColor);
+        const drawStroke = parseColor(el.strokeColor);
+        const drawFillOpacity = el.opacity !== undefined ? el.opacity : 1.0;
+        const drawStrokeOpacity = el.opacity !== undefined ? el.opacity : 1.0;
         const sW = el.strokeWidth || 2;
         
         if (el.shapeType === 'circle' || el.shapeType === 'ellipse') {
