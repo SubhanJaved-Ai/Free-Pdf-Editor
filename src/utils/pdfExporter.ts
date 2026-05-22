@@ -1,6 +1,7 @@
 // Client-side PDF Exporter utilizing pdf-lib
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import { EditorElement, PageDimension } from '../store/useEditorStore';
+import { renderShapeSvgContent } from './shapeDefinitions';
 
 // Convert hex color to PDF rgb object
 function hexToRgb(hex?: string) {
@@ -185,82 +186,158 @@ export async function exportEditedPdf(
       }
       
       else if (el.type === 'shape' && el.shapeType) {
-        const borderStrokeColor = el.strokeColor ? hexToRgb(el.strokeColor) : undefined;
-        const fillSolidColor = el.fillColor && el.fillColor !== 'transparent' ? hexToRgb(el.fillColor) : undefined;
+        // Parse basic colors
+        const parseColor = (colStr?: string) => {
+          if (!colStr || colStr === 'none' || colStr === 'transparent') return undefined;
+          if (colStr.startsWith('rgba')) {
+            const parts = colStr.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+            if (parts) return hexToRgb(`#${parseInt(parts[1]).toString(16).padStart(2,'0')}${parseInt(parts[2]).toString(16).padStart(2,'0')}${parseInt(parts[3]).toString(16).padStart(2,'0')}`);
+          }
+          return hexToRgb(colStr);
+        };
+        const parseOpacity = (colStr?: string) => {
+           if (colStr && colStr.startsWith('rgba')) {
+             const parts = colStr.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+             if (parts) return parseFloat(parts[4]);
+           }
+           return 1;
+        };
+
+        const drawFill = parseColor(el.fillColor);
+        const drawFillOpacity = parseOpacity(el.fillColor) * (el.opacity || 1);
+        const drawStroke = parseColor(el.strokeColor);
+        const drawStrokeOpacity = parseOpacity(el.strokeColor) * (el.opacity || 1);
+        const sW = el.strokeWidth || 2;
         
-        if (el.shapeType === 'rect') {
-          newPage.drawRectangle({
-            x: elX,
-            y: elY,
-            width: elWidth,
-            height: elHeight,
-            borderColor: borderStrokeColor,
-            borderWidth: el.strokeWidth,
-            color: fillSolidColor,
-            opacity: el.opacity,
-            rotate: rotationDegrees
-          });
-        } else if (el.shapeType === 'circle') {
-          const rx = elWidth / 2;
-          const ry = elHeight / 2;
+        if (el.shapeType === 'circle' || el.shapeType === 'ellipse') {
+          // pdf-lib's drawEllipse correctly rotates around the center of the bounding box
           newPage.drawEllipse({
-            x: elX + rx,
-            y: elY + ry,
-            xScale: rx,
-            yScale: ry,
-            borderColor: borderStrokeColor,
-            borderWidth: el.strokeWidth,
-            color: fillSolidColor,
-            opacity: el.opacity,
-            rotate: rotationDegrees
+            x: elX + elWidth/2,
+            y: elY + elHeight/2,
+            xScale: elWidth/2,
+            yScale: elHeight/2,
+            color: drawFill,
+            borderColor: drawStroke,
+            borderWidth: sW,
+            opacity: drawFillOpacity,
+            borderOpacity: drawStrokeOpacity,
+            rotate: degrees(-(el.rotation || 0))
           });
-        } else if (el.shapeType === 'line') {
-          newPage.drawLine({
-            start: { x: elX, y: elY + elHeight },
-            end: { x: elX + elWidth, y: elY },
-            color: borderStrokeColor || rgb(0, 0, 0),
-            thickness: el.strokeWidth || 2,
-            opacity: el.opacity
-          });
-        } else if (el.shapeType === 'arrow') {
-          // Draw standard line first
-          const startX = elX;
-          const startY = elY + elHeight;
-          const endX = elX + elWidth;
-          const endY = elY;
+        } else {
+          // For all other shapes (rectangles, polygons, stars, flowcharts), we parse the SVG path.
+          // This guarantees perfect center-anchored WYSIWYG rotations and proportions.
+          const svgContent = renderShapeSvgContent(el.shapeType, el.fillColor || '', el.strokeColor || '', sW, el.borderDash);
           
-          newPage.drawLine({
-            start: { x: startX, y: startY },
-            end: { x: endX, y: endY },
-            color: borderStrokeColor || rgb(0, 0, 0),
-            thickness: el.strokeWidth || 2,
-            opacity: el.opacity
-          });
-          
-          // Draw a small arrow head
-          const angle = Math.atan2(endY - startY, endX - startX);
-          const arrowLength = 10;
-          
-          const x1 = endX - arrowLength * Math.cos(angle - Math.PI / 6);
-          const y1 = endY - arrowLength * Math.sin(angle - Math.PI / 6);
-          const x2 = endX - arrowLength * Math.cos(angle + Math.PI / 6);
-          const y2 = endY - arrowLength * Math.sin(angle + Math.PI / 6);
-          
-          newPage.drawLine({
-            start: { x: endX, y: endY },
-            end: { x: x1, y: y1 },
-            color: borderStrokeColor || rgb(0, 0, 0),
-            thickness: el.strokeWidth || 2,
-            opacity: el.opacity
-          });
-          
-          newPage.drawLine({
-            start: { x: endX, y: endY },
-            end: { x: x2, y: y2 },
-            color: borderStrokeColor || rgb(0, 0, 0),
-            thickness: el.strokeWidth || 2,
-            opacity: el.opacity
-          });
+          const parseAndTransformSvgPath = (pathStr: string, elX: number, elY: number, elW: number, elH: number, angleDeg: number) => {
+            const rad = (angleDeg * Math.PI) / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            
+            const transform = (x: number, y: number) => {
+              const sx = (x / 100) * elW;
+              const sy = (y / 100) * elH;
+              const cxLocal = elW / 2;
+              const cyLocal = elH / 2;
+              const rx = (sx - cxLocal) * cos - (sy - cyLocal) * sin + cxLocal;
+              const ry = (sx - cxLocal) * sin + (sy - cyLocal) * cos + cyLocal;
+              return { x: elX + rx, y: (elY + elH) - ry };
+            };
+
+            const regex = /([MLCQHVZmlcqhvz])([^A-Za-z]*)/g;
+            let match;
+            let newPath = '';
+            let currX = 0;
+            let currY = 0;
+            
+            while ((match = regex.exec(pathStr)) !== null) {
+              const cmd = match[1].toUpperCase();
+              const argsStr = match[2].trim().replace(/,/g, ' ').replace(/\s+/g, ' ');
+              const args = argsStr ? argsStr.split(' ').map(Number) : [];
+              
+              if (cmd === 'M' || cmd === 'L') {
+                const pt = transform(args[0], args[1]);
+                newPath += `${cmd} ${pt.x},${pt.y} `;
+                currX = args[0]; currY = args[1];
+              } else if (cmd === 'C') {
+                const pt1 = transform(args[0], args[1]);
+                const pt2 = transform(args[2], args[3]);
+                const pt3 = transform(args[4], args[5]);
+                newPath += `C ${pt1.x},${pt1.y} ${pt2.x},${pt2.y} ${pt3.x},${pt3.y} `;
+                currX = args[4]; currY = args[5];
+              } else if (cmd === 'Q') {
+                const pt1 = transform(args[0], args[1]);
+                const pt2 = transform(args[2], args[3]);
+                newPath += `Q ${pt1.x},${pt1.y} ${pt2.x},${pt2.y} `;
+                currX = args[2]; currY = args[3];
+              } else if (cmd === 'H') {
+                const pt = transform(args[0], currY);
+                newPath += `L ${pt.x},${pt.y} `;
+                currX = args[0];
+              } else if (cmd === 'V') {
+                const pt = transform(currX, args[0]);
+                newPath += `L ${pt.x},${pt.y} `;
+                currY = args[0];
+              } else if (cmd === 'Z') {
+                newPath += 'Z ';
+              }
+            }
+            return newPath.trim();
+          };
+
+          const tagRegex = /<(path|line|polygon|rect)\s+([^>]+)>/g;
+          let match;
+          while ((match = tagRegex.exec(svgContent)) !== null) {
+            const tag = match[1];
+            const attrsStr = match[2];
+            
+            let pathData = '';
+            if (tag === 'path') {
+              const dMatch = /d="([^"]+)"/.exec(attrsStr);
+              if (dMatch) pathData = dMatch[1];
+            } else if (tag === 'line') {
+              const x1 = /x1="([^"]+)"/.exec(attrsStr);
+              const y1 = /y1="([^"]+)"/.exec(attrsStr);
+              const x2 = /x2="([^"]+)"/.exec(attrsStr);
+              const y2 = /y2="([^"]+)"/.exec(attrsStr);
+              if (x1 && y1 && x2 && y2) {
+                pathData = `M${x1[1]},${y1[1]} L${x2[1]},${y2[1]}`;
+              }
+            } else if (tag === 'polygon') {
+              const ptsMatch = /points="([^"]+)"/.exec(attrsStr);
+              if (ptsMatch) {
+                const pts = ptsMatch[1].trim().split(/\s+/).map(p => p.split(',').map(Number));
+                pathData = pts.map((p, i) => `${i===0?'M':'L'}${p[0]},${p[1]}`).join(' ') + ' Z';
+              }
+            } else if (tag === 'rect') {
+              const rX = parseFloat(/x="([^"]+)"/.exec(attrsStr)?.[1] || '0');
+              const rY = parseFloat(/y="([^"]+)"/.exec(attrsStr)?.[1] || '0');
+              const rW = parseFloat(/width="([^"]+)"/.exec(attrsStr)?.[1] || '100');
+              const rH = parseFloat(/height="([^"]+)"/.exec(attrsStr)?.[1] || '100');
+              pathData = `M${rX},${rY} L${rX+rW},${rY} L${rX+rW},${rY+rH} L${rX},${rY+rH} Z`;
+            }
+
+            if (pathData) {
+              const transformedPath = parseAndTransformSvgPath(pathData, elX, elY, elWidth, elHeight, el.rotation || 0);
+              
+              let localFill = drawFill;
+              let localStroke = drawStroke;
+              if (/fill="[^"]+"/.test(attrsStr) && !/fill="none"/.test(attrsStr)) {
+                // For compound shapes where the sub-element overrides the color (e.g. arrow heads)
+                if (!attrsStr.includes('fill="rgba') && !attrsStr.includes('fill="#')) {
+                  // Fallback override logic
+                  localFill = drawStroke;
+                }
+              }
+              
+              newPage.drawSvgPath(transformedPath, {
+                color: localFill,
+                borderColor: localStroke,
+                borderWidth: sW,
+                opacity: drawFillOpacity,
+                borderOpacity: drawStrokeOpacity,
+              });
+            }
+          }
         }
       }
       
