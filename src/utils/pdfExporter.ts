@@ -59,6 +59,8 @@ export async function exportEditedPdf(
   // 2. Create the target PDF Document (handles reordering, duplicates, and new pages)
   const targetPdf = await PDFDocument.create();
   
+  console.log(`[EXPORT DEBUG] Starting export with ${elements.length} elements, ${pageOrders.length} pages.`);
+  
   // Cache embedded fonts
   const fontCache: Record<string, any> = {
     'Helvetica': await targetPdf.embedFont(StandardFonts.Helvetica),
@@ -98,8 +100,15 @@ export async function exportEditedPdf(
     // 3. Find and apply elements belonging to this page
     // An element belongs to page index "originalPageIndex" in visual sequence
     const pageElements = elements.filter(el => el.pageIndex === originalPageIndex);
+    console.log(`[EXPORT DEBUG] Page ${visualPageIndex} has ${pageElements.length} elements.`);
+    
+    // HARD TEST: Draw a huge red rectangle on every page
+    newPage.drawRectangle({
+      x: 10, y: 10, width: 200, height: 200, color: rgb(1, 0, 0), opacity: 0.5
+    });
     
     for (const el of pageElements) {
+      console.log(`[EXPORT DEBUG] Processing element: id=${el.id}, type=${el.type}, shapeType=${el.shapeType}`);
       // Calculate coordinates in PDF Points space (origin bottom-left)
       const elX = (el.x / 100) * pageWidth;
       const elWidth = (el.width / 100) * pageWidth;
@@ -186,6 +195,7 @@ export async function exportEditedPdf(
       }
       
       else if (el.type === 'shape' && el.shapeType) {
+        console.log(`[EXPORT DEBUG] Inside shape export block for shapeType: ${el.shapeType}`);
         // Parse basic colors
         const parseColor = (colStr?: string) => {
           if (!colStr || colStr === 'none' || colStr === 'transparent') return undefined;
@@ -256,26 +266,26 @@ export async function exportEditedPdf(
               
               if (cmd === 'M' || cmd === 'L') {
                 const pt = transform(args[0], args[1]);
-                newPath += `${cmd} ${pt.x},${pt.y} `;
+                newPath += `${cmd} ${pt.x} ${pt.y} `;
                 currX = args[0]; currY = args[1];
               } else if (cmd === 'C') {
                 const pt1 = transform(args[0], args[1]);
                 const pt2 = transform(args[2], args[3]);
                 const pt3 = transform(args[4], args[5]);
-                newPath += `C ${pt1.x},${pt1.y} ${pt2.x},${pt2.y} ${pt3.x},${pt3.y} `;
+                newPath += `C ${pt1.x} ${pt1.y} ${pt2.x} ${pt2.y} ${pt3.x} ${pt3.y} `;
                 currX = args[4]; currY = args[5];
               } else if (cmd === 'Q') {
                 const pt1 = transform(args[0], args[1]);
                 const pt2 = transform(args[2], args[3]);
-                newPath += `Q ${pt1.x},${pt1.y} ${pt2.x},${pt2.y} `;
+                newPath += `Q ${pt1.x} ${pt1.y} ${pt2.x} ${pt2.y} `;
                 currX = args[2]; currY = args[3];
               } else if (cmd === 'H') {
                 const pt = transform(args[0], currY);
-                newPath += `L ${pt.x},${pt.y} `;
+                newPath += `L ${pt.x} ${pt.y} `;
                 currX = args[0];
               } else if (cmd === 'V') {
                 const pt = transform(currX, args[0]);
-                newPath += `L ${pt.x},${pt.y} `;
+                newPath += `L ${pt.x} ${pt.y} `;
                 currY = args[0];
               } else if (cmd === 'Z') {
                 newPath += 'Z ';

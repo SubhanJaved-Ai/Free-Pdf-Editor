@@ -407,22 +407,7 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
       }`}
       tabIndex={0}
     >
-      {/* Floating Toolbar Indicator */}
-      <div className="absolute top-4 left-4 z-20 flex gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-950/80 backdrop-blur border border-white/5 text-[10px] font-bold text-zinc-300 shadow">
-          <Move size={11} className="text-aether-cyan" />
-          <span>Hold Spacebar + Drag to Pan Canvas</span>
-        </div>
-        
-        <button
-          onClick={handleOcrActivePage}
-          disabled={isOcrRunning}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-aether-violet to-aether-indigo text-[10px] font-bold text-white shadow-lg shadow-aether-violet/10 hover:opacity-90 transition duration-150 disabled:opacity-50"
-        >
-          <Sparkles size={11} className="animate-pulse" />
-          <span>OCR Scanned Text (Page {currentVisualPageNumber})</span>
-        </button>
-      </div>
+
 
       {/* Pages Vertical Layout Stack */}
       <div 
