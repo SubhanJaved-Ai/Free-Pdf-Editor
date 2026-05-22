@@ -59,7 +59,12 @@ export async function exportEditedPdf(
   // 2. Create the target PDF Document (handles reordering, duplicates, and new pages)
   const targetPdf = await PDFDocument.create();
   
-  console.log(`[EXPORT DEBUG] Starting export with ${elements.length} elements, ${pageOrders.length} pages.`);
+  console.log("==========================================");
+  console.log("[DEBUG: EXPORT START]");
+  console.log("Total Elements:", elements.length);
+  console.log("ALL ELEMENTS:", JSON.parse(JSON.stringify(elements)));
+  console.log("SHAPE ELEMENTS ONLY:", JSON.parse(JSON.stringify(elements.filter(e => String(e.type).includes('shape')))));
+  console.log("==========================================");
   
   // Cache embedded fonts
   const fontCache: Record<string, any> = {
@@ -103,9 +108,15 @@ export async function exportEditedPdf(
     console.log(`[EXPORT DEBUG] Page ${visualPageIndex} has ${pageElements.length} elements.`);
     
     // HARD TEST: Draw a huge red rectangle on every page
-    newPage.drawRectangle({
-      x: 10, y: 10, width: 200, height: 200, color: rgb(1, 0, 0), opacity: 0.5
-    });
+    console.log("[DEBUG] Drawing HARD TEST red rectangle on page:", visualPageIndex);
+    try {
+      newPage.drawRectangle({
+        x: 10, y: 10, width: 200, height: 200, color: rgb(1, 0, 0), opacity: 1.0
+      });
+      console.log("[DEBUG] Hard test rectangle drawn successfully");
+    } catch (e) {
+      console.error("[DEBUG ERROR] Hard test rectangle failed:", e);
+    }
     
     for (const el of pageElements) {
       console.log(`[EXPORT DEBUG] Processing element: id=${el.id}, type=${el.type}, shapeType=${el.shapeType}`);
@@ -195,7 +206,8 @@ export async function exportEditedPdf(
       }
       
       else if (el.type === 'shape' && el.shapeType) {
-        console.log(`[EXPORT DEBUG] Inside shape export block for shapeType: ${el.shapeType}`);
+        console.log(`[DEBUG] Found shape: id=${el.id}, shapeType=${el.shapeType}`);
+        
         // Parse basic colors
         const parseColor = (colStr?: string) => {
           if (!colStr || colStr === 'none' || colStr === 'transparent') return undefined;
@@ -205,21 +217,17 @@ export async function exportEditedPdf(
           }
           return hexToRgb(colStr);
         };
-        const parseOpacity = (colStr?: string) => {
-           if (colStr && colStr.startsWith('rgba')) {
-             const parts = colStr.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-             if (parts) return parseFloat(parts[4]);
-           }
-           return 1;
-        };
-
-        const drawFill = parseColor(el.fillColor);
-        const drawFillOpacity = parseOpacity(el.fillColor) * (el.opacity || 1);
-        const drawStroke = parseColor(el.strokeColor);
-        const drawStrokeOpacity = parseOpacity(el.strokeColor) * (el.opacity || 1);
+        
+        // FORCE STYLE TEST AS REQUESTED BY USER
+        console.log("[DEBUG] Forcing shape styles (RED FILL, BLACK STROKE, OPACITY 1)");
+        const drawFill = rgb(1, 0, 0); // Force Red
+        const drawStroke = rgb(0, 0, 0); // Force Black
+        const drawFillOpacity = 1.0;
+        const drawStrokeOpacity = 1.0;
         const sW = el.strokeWidth || 2;
         
         if (el.shapeType === 'circle' || el.shapeType === 'ellipse') {
+          console.log("[DEBUG] Drawing shape using drawEllipse");
           // pdf-lib's drawEllipse correctly rotates around the center of the bounding box
           newPage.drawEllipse({
             x: elX + elWidth/2,
@@ -234,6 +242,7 @@ export async function exportEditedPdf(
             rotate: degrees(-(el.rotation || 0))
           });
         } else {
+          console.log("[DEBUG] Drawing shape using drawSvgPath (parsed SVG)");
           // For all other shapes (rectangles, polygons, stars, flowcharts), we parse the SVG path.
           // This guarantees perfect center-anchored WYSIWYG rotations and proportions.
           const svgContent = renderShapeSvgContent(el.shapeType, el.fillColor || '', el.strokeColor || '', sW, el.borderDash);
@@ -339,13 +348,19 @@ export async function exportEditedPdf(
                 }
               }
               
-              newPage.drawSvgPath(transformedPath, {
-                color: localFill,
-                borderColor: localStroke,
-                borderWidth: sW,
-                opacity: drawFillOpacity,
-                borderOpacity: drawStrokeOpacity,
-              });
+              console.log("[DEBUG] About to call drawSvgPath with:", transformedPath);
+              try {
+                newPage.drawSvgPath(transformedPath, {
+                  color: localFill,
+                  borderColor: localStroke,
+                  borderWidth: sW,
+                  opacity: drawFillOpacity,
+                  borderOpacity: drawStrokeOpacity,
+                });
+                console.log("[DEBUG] drawSvgPath success");
+              } catch (e) {
+                console.error("[DEBUG ERROR] drawSvgPath failed:", e);
+              }
             }
           }
         }
