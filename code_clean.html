@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AetherPDF | Precision PDF Engineering</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#c1beff",
+                        "on-primary": "#ffffff",
+                        "tertiary-container": "#554e60",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#100069",
+                        "surface-variant": "#e4e1ed",
+                        "surface-bright": "#fcf8ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#cac0d6",
+                        "on-secondary-container": "#fffbff",
+                        "on-surface-variant": "#464554",
+                        "on-background": "#1b1b23",
+                        "surface-container-highest": "#e4e1ed",
+                        "on-tertiary": "#ffffff",
+                        "surface-tint": "#5148d7",
+                        "surface-container": "#f0ecf8",
+                        "on-error": "#ffffff",
+                        "primary": "#2a14b4",
+                        "surface-container-low": "#f6f2fe",
+                        "tertiary-fixed-dim": "#cdc2d9",
+                        "outline": "#777586",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#f3effb",
+                        "surface": "#fcf8ff",
+                        "secondary-container": "#9c48ea",
+                        "inverse-surface": "#302f39",
+                        "surface-container-high": "#eae6f3",
+                        "on-primary-fixed-variant": "#372abf",
+                        "tertiary-fixed": "#e9def5",
+                        "on-secondary-fixed-variant": "#6900b3",
+                        "on-secondary-fixed": "#2c0051",
+                        "tertiary": "#3e3749",
+                        "on-tertiary-fixed": "#1e1929",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed-variant": "#4a4456",
+                        "inverse-primary": "#c3c0ff",
+                        "secondary-fixed": "#f0dbff",
+                        "primary-fixed": "#e3dfff",
+                        "outline-variant": "#c7c4d7",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#8127cf",
+                        "surface-dim": "#dcd8e4",
+                        "on-surface": "#1b1b23",
+                        "background": "#fcf8ff",
+                        "secondary-fixed-dim": "#ddb7ff",
+                        "primary-container": "#4338ca"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "base": "8px",
+                        "xl": "80px",
+                        "sm": "12px",
+                        "sidebar-width": "280px",
+                        "lg": "48px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "display": ["Geist"],
+                        "body-sm": ["Geist"],
+                        "body-md": ["Geist"],
+                        "headline-lg": ["Geist"],
+                        "body-lg": ["Geist"],
+                        "label-md": ["Geist"],
+                        "headline-md": ["Geist"],
+                        "label-sm": ["Geist"],
+                        "headline-lg-mobile": ["Geist"]
+                    },
+                    "fontSize": {
+                        "display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Grain Effect Overlay */
+        .grain-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Mesh Gradient Background */
+        .mesh-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: radial-gradient(at 0% 0%, rgba(156, 72, 234, 0.1) 0, transparent 50%),
+                        radial-gradient(at 100% 0%, rgba(42, 20, 180, 0.08) 0, transparent 50%),
+                        radial-gradient(at 100% 100%, rgba(129, 39, 207, 0.05) 0, transparent 50%),
+                        radial-gradient(at 0% 100%, rgba(81, 72, 215, 0.08) 0, transparent 50%);
+            animation: meshMove 20s ease infinite alternate;
+        }
+
+        @keyframes meshMove {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes floatParallax {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(0.5deg); }
+        }
+
+        @keyframes lineDraw {
+            from { stroke-dashoffset: 100; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes pulseSoft {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(42, 20, 180, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(42, 20, 180, 0); }
+        }
+
+        .animate-fade-up {
+            opacity: 0;
+            animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+
+        .parallax-float {
+            animation: floatParallax 6s ease-in-out infinite;
+        }
+
+        .bento-card {
+            transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .bento-card.reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .bento-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #8127cf;
+            box-shadow: 0 20px 40px -10px rgba(129, 39, 207, 0.15), 0 0 20px rgba(129, 39, 207, 0.05);
+        }
+
+        .step-number-pulse {
+            animation: pulseSoft 2s infinite;
+        }
+
+        .connector-line {
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            transition: stroke-dashoffset 1.5s ease-out;
+        }
+
+        .connector-line.draw {
+            stroke-dashoffset: 0;
+        }
+
+        .slider-handle {
+            cursor: ew-resize;
+            width: 4px;
+            height: 100%;
+            background: #2a14b4;
+            position: absolute;
+            left: 50%;
+            top: 0;
+            z-index: 10;
+            transition: left 0.15s cubic-bezier(0.16, 1, 0.3, 1); /* Physics feel */
+        }
+
+        .slider-handle::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 44px;
+            height: 44px;
+            background: #2a14b4;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 10px 20px rgba(42, 20, 180, 0.3);
+            border: 2px solid white;
+        }
+
+        .slider-before {
+            transition: width 0.15s cubic-bezier(0.16, 1, 0.3, 1); /* Physics feel */
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .drag-zone-active {
+            border-color: #8127cf !important;
+            background-color: rgba(129, 39, 207, 0.05) !important;
+            box-shadow: 0 0 40px rgba(129, 39, 207, 0.15);
+            transform: scale(1.01);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md selection:bg-secondary-container selection:text-on-secondary-container relative overflow-x-hidden">
+<div class="grain-bg"></div>
+<div class="mesh-gradient"></div>
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm">
+<div class="max-w-7xl mx-auto flex justify-between items-center h-16 px-6">
+<div class="flex items-center gap-3">
+<img alt="AetherPDF Logo" class="h-8 w-8 object-contain" src="..."/>
+<span class="font-display text-headline-md font-bold text-primary tracking-tight">AetherPDF</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-body-md text-primary font-bold border-b-2 border-primary py-1 transition-colors" href="#">Tools</a>
+<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Templates</a>
+<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Solutions</a>
+<a class="font-body-md text-on-surface-variant hover:text-primary transition-colors" href="#">Pricing</a>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined">help</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-md hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all">
+                    Upload PDF
+                </button>
+</div>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="pt-32 pb-24 px-6 relative z-10">
+<div class="max-w-5xl mx-auto text-center">
+<h1 class="font-display text-display md:text-[72px] mb-6 animate-fade-up">Edit Any PDF. <span class="text-primary">Instantly.</span></h1>
+<p class="font-body-lg text-on-surface-variant mb-12 max-w-2xl mx-auto animate-fade-up stagger-1">
+                Professional PDF editing for free. No signup, no login, just precision tools designed for high-stakes productivity.
+            </p>
+<!-- Drag and Drop Zone with Parallax Float -->
+<div class="max-w-3xl mx-auto group parallax-float animate-fade-up stagger-2" id="drop-zone">
+<div class="border-2 border-dashed border-outline-variant bg-surface-container-lowest/40 backdrop-blur-sm rounded-[2.5rem] p-16 transition-all duration-500 hover:border-primary cursor-pointer relative overflow-hidden shadow-2xl shadow-primary/5">
+<div class="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="relative z-10 flex flex-col items-center">
+<div class="w-24 h-24 bg-secondary-container/10 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110">
+<span class="material-symbols-outlined text-secondary text-6xl" style="font-variation-settings: 'FILL' 1;">description</span>
+</div>
+<h3 class="font-headline-md text-primary mb-2">Drop your PDF here</h3>
+<p class="font-body-sm text-on-surface-variant">or click to browse your files</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="py-24 px-6 relative z-10">
+<div class="max-w-7xl mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
+<div class="max-w-xl">
+<span class="text-secondary font-label-sm uppercase tracking-widest mb-4 block">Precision Toolkit</span>
+<h2 class="font-display text-headline-lg">Engineered for total document control.</h2>
+</div>
+<div class="flex gap-3">
+<button class="p-3 rounded-full border border-outline-variant hover:bg-white hover:text-primary transition-all"><span class="material-symbols-outlined">arrow_back</span></button>
+<button class="p-3 rounded-full border border-outline-variant hover:bg-white hover:text-primary transition-all"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="features-grid">
+<!-- Feature 1 -->
+<div class="bento-card p-8 bg-white/60 backdrop-blur-md border border-outline-variant rounded-[2rem] flex flex-col justify-between h-72 group">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-3xl">format_size</span>
+</div>
+<div>
+<h4 class="font-headline-md mb-2">Edit Text</h4>
+<p class="font-body-sm text-on-surface-variant">Modify text directly within the PDF with original font matching.</p>
+</div>
+</div>
+<!-- Feature 2 -->
+<div class="bento-card p-8 bg-white/60 backdrop-blur-md border border-outline-variant rounded-[2rem] flex flex-col justify-between h-72 group">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-3xl">image</span>
+</div>
+<div>
+<h4 class="font-headline-md mb-2">Edit Images</h4>
+<p class="font-body-sm text-on-surface-variant">Replace, resize, or reposition images without losing layout quality.</p>
+</div>
+</div>
+<!-- Feature 3 -->
+<div class="bento-card p-8 bg-white/60 backdrop-blur-md border border-outline-variant rounded-[2rem] flex flex-col justify-between h-72 group">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-3xl">grid_view</span>
+</div>
+<div>
+<h4 class="font-headline-md mb-2">Rearrange Pages</h4>
+<p class="font-body-sm text-on-surface-variant">Drag and drop pages to reorder, merge, or split documents instantly.</p>
+</div>
+</div>
+<!-- Feature 4 -->
+<div class="bento-card p-8 bg-white/60 backdrop-blur-md border border-outline-variant rounded-[2rem] flex flex-col justify-between h-72 group">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-3xl">draw</span>
+</div>
+<div>
+<h4 class="font-headline-md mb-2">Sign PDFs</h4>
+<p class="font-body-sm text-on-surface-variant">Create professional e-signatures and sign documents in seconds.</p>
+</div>
+</div>
+<!-- Feature 5 -->
+<div class="bento-card p-8 bg-white/60 backdrop-blur-md border border-outline-variant rounded-[2rem] flex flex-col justify-between h-72 group">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-3xl">document_scanner</span>
+</div>
+<div>
+<h4 class="font-headline-md mb-2">OCR Documents</h4>
+<p class="font-body-sm text-on-surface-variant">Convert scanned images into fully editable and searchable text.</p>
+</div>
+</div>
+<!-- Feature 6 -->
+<div class="bento-card p-8 bg-white/60 backdrop-blur-md border border-outline-variant rounded-[2rem] flex flex-col justify-between h-72 group">
+<div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-3xl">ios_share</span>
+</div>
+<div>
+<h4 class="font-headline-md mb-2">High-Quality Export</h4>
+<p class="font-body-sm text-on-surface-variant">Export to multiple formats with pixel-perfect resolution and fidelity.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- How it Works Section -->
+<section class="py-24 px-6 relative z-10" id="how-it-works">
+<div class="max-w-7xl mx-auto">
+<div class="text-center mb-16">
+<h2 class="font-display text-headline-lg mb-4">Precision in three steps.</h2>
+<p class="font-body-md text-on-surface-variant">Your workflow, streamlined for maximum efficiency.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+<!-- Connectors for desktop -->
+<div class="hidden md:block absolute top-12 left-[15%] right-[15%] h-[2px]">
+<svg class="overflow-visible" height="2" width="100%">
+<line class="connector-line" id="line-1" stroke="url(#line-gradient)" stroke-dasharray="10" stroke-width="2" x1="0" x2="100%" y1="0" y2="0"></line>
+<defs>
+<lineargradient id="line-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#2a14b4" stop-opacity="0"></stop>
+<stop offset="50%" stop-color="#2a14b4" stop-opacity="0.5"></stop>
+<stop offset="100%" stop-color="#2a14b4" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+<div class="flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center font-display text-headline-md mb-6 shadow-xl shadow-primary/30 step-number-pulse relative z-10">1</div>
+<h5 class="font-headline-md mb-2">Upload</h5>
+<p class="font-body-sm text-on-surface-variant max-w-[200px]">Securely drop your file into our encrypted canvas.</p>
+</div>
+<div class="flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center font-display text-headline-md mb-6 shadow-xl shadow-primary/30 step-number-pulse relative z-10">2</div>
+<h5 class="font-headline-md mb-2">Edit</h5>
+<p class="font-body-sm text-on-surface-variant max-w-[200px]">Apply changes using our suite of engineering-grade tools.</p>
+</div>
+<div class="flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center font-display text-headline-md mb-6 shadow-xl shadow-primary/30 step-number-pulse relative z-10">3</div>
+<h5 class="font-headline-md mb-2">Download</h5>
+<p class="font-body-sm text-on-surface-variant max-w-[200px]">Export your document instantly with no watermarks.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Before/After Slider Section -->
+<section class="py-24 px-6 relative z-10">
+<div class="max-w-5xl mx-auto">
+<div class="text-center mb-16">
+<h2 class="font-display text-headline-lg mb-4">The Aether Transformation</h2>
+<p class="font-body-md text-on-surface-variant">See how we turn complex documents into professional assets.</p>
+</div>
+<div class="relative w-full aspect-video rounded-[2.5rem] overflow-hidden border border-outline-variant shadow-2xl bg-white select-none group" id="slider-container">
+<!-- After Image (Bottom) -->
+<div class="absolute inset-0">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFA8_t2Rwi3VDOV9ty-I_L8epr25-Vf2CTEv2OocFhIO04qkvaVnCYY-fbOKGwED2kkyJo8qm0T-Uwjm4qmhzgSCtWjkyfoEnmbIgAcV8da4u4UQMuzF7oclTbyfQtP6cGx0r4QXsHNzUXrXRkILiXVOebuvA1bmaI5kh2idmMj8PuZt-djEhYI_SFYlyHA6906hD_2r8tvyr4AqpINR-j_iTTe6LzXCJ8wakNXWTB-kk2yi_cM2tFIHs-J3JooJIg6Ry9E7ReVAiw"/>
+<div class="absolute bottom-8 right-8 bg-primary text-white px-5 py-2 rounded-full font-label-sm shadow-lg tracking-wider">AFTER</div>
+</div>
+<!-- Before Image (Top Clip) -->
+<div class="absolute inset-0 overflow-hidden slider-before" id="slider-before" style="width: 50%;">
+<div class="absolute inset-0 w-[1000px] md:w-[1024px] lg:w-[1280px]">
+<img class="w-full h-full object-cover grayscale brightness-75" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHTSqh9HP-4Zp8l7XCZfcQ2mYsZn-ssyNGyZ4d6l8tnsKPxbAo-Tazwy9-Hc-rxAyTjuFHT5Q-UosuiIpRC2mIvj9i8pj3UAANEAgCS8T5N6kZdkUY8kdU6Qpnrzr6DOILnnfTGelkRujyTaicnmORT_nFZetxr6OXC1H3bPCEOBGO-SCvEZLIkcezRHON9a8ppXObLuT1-tMB5Ajdt_3NfDefZrGznHCjWMPKbkz4qgpPr0HS0Rm2OpGvbqEyXGFO7L9_5rbiqN09"/>
+</div>
+<div class="absolute bottom-8 left-8 bg-on-background/60 text-white px-5 py-2 rounded-full font-label-sm backdrop-blur tracking-wider">BEFORE</div>
+</div>
+<!-- Handle -->
+<div class="slider-handle" id="slider-handle">
+<div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
+<span class="material-symbols-outlined text-white text-xl">unfold_more</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- FAQ Section -->
+<section class="py-24 px-6 relative z-10">
+<div class="max-w-3xl mx-auto">
+<h2 class="font-display text-headline-lg mb-12 text-center">Frequently Asked</h2>
+<div class="space-y-4">
+<div class="border border-outline-variant rounded-2xl p-6 bg-white/40 backdrop-blur-sm hover:bg-white hover:border-primary transition-all cursor-pointer group">
+<div class="flex justify-between items-center">
+<h6 class="font-headline-md text-body-lg">Is it truly free?</h6>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-transform group-hover:rotate-180">expand_more</span>
+</div>
+<p class="font-body-sm text-on-surface-variant mt-4 hidden group-[.open]:block">Yes. AetherPDF provides its core engine for free with no daily limits or watermarks on exports.</p>
+</div>
+<div class="border border-outline-variant rounded-2xl p-6 bg-white/40 backdrop-blur-sm hover:bg-white hover:border-primary transition-all cursor-pointer group">
+<div class="flex justify-between items-center">
+<h6 class="font-headline-md text-body-lg">How secure are my files?</h6>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-transform group-hover:rotate-180">expand_more</span>
+</div>
+<p class="font-body-sm text-on-surface-variant mt-4 hidden group-[.open]:block">We use 256-bit AES encryption. Your files are processed in a sandbox environment and automatically deleted after 2 hours.</p>
+</div>
+<div class="border border-outline-variant rounded-2xl p-6 bg-white/40 backdrop-blur-sm hover:bg-white hover:border-primary transition-all cursor-pointer group">
+<div class="flex justify-between items-center">
+<h6 class="font-headline-md text-body-lg">Do I need to create an account?</h6>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-transform group-hover:rotate-180">expand_more</span>
+</div>
+<p class="font-body-sm text-on-surface-variant mt-4 hidden group-[.open]:block">No registration required. We value your privacy and time; simply upload and start editing.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-on-background text-white py-16 relative z-10">
+<div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-12">
+<div class="flex flex-col items-center md:items-start gap-4">
+<div class="flex items-center gap-3">
+<img alt="AetherPDF Logo" class="h-8 w-8 object-contain invert brightness-0 filter" src="..."/>
+<span class="font-display text-headline-md text-white font-bold">AetherPDF</span>
+</div>
+<p class="font-body-sm text-outline-variant/60 max-w-sm text-center md:text-left">
+                    Precision engineering for digital documents. Built for the modern professional.
+                </p>
+</div>
+<div class="flex flex-wrap justify-center gap-8">
+<a class="font-body-sm text-outline-variant hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="font-body-sm text-outline-variant hover:text-primary transition-colors" href="#">Terms</a>
+<a class="font-body-sm text-outline-variant hover:text-primary transition-colors" href="#">API</a>
+<a class="font-body-sm text-outline-variant hover:text-primary transition-colors" href="#">Github</a>
+</div>
+<div class="text-outline-variant/40 font-body-sm">
+                © 2024 AetherPDF. Precision Engineering for PDF.
+            </div>
+</div>
+</footer>
+<script>
+        // Intersection Observer for staggered entrance animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (entry.target.id === 'features-grid') {
+                        const cards = entry.target.querySelectorAll('.bento-card');
+                        cards.forEach((card, index) => {
+                            setTimeout(() => {
+                                card.classList.add('reveal');
+                            }, index * 100);
+                        });
+                    } else if (entry.target.id === 'how-it-works') {
+                        const line = entry.target.querySelector('.connector-line');
+                        if (line) line.classList.add('draw');
+                    } else {
+                        entry.target.classList.add('reveal');
+                    }
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.bento-card, #features-grid, #how-it-works').forEach(el => revealObserver.observe(el));
+
+        // Physics-based Before/After Slider Logic
+        const container = document.getElementById('slider-container');
+        const beforeImg = document.getElementById('slider-before');
+        const handle = document.getElementById('slider-handle');
+
+        let isResizing = false;
+        let targetX = 50;
+        let currentX = 50;
+
+        function updateSlider() {
+            // Smooth interpolation
+            currentX += (targetX - currentX) * 0.15;
+            
+            beforeImg.style.width = `${currentX}%`;
+            handle.style.left = `${currentX}%`;
+
+            if (Math.abs(targetX - currentX) > 0.01) {
+                requestAnimationFrame(updateSlider);
+            }
+        }
+
+        function handleMove(x) {
+            const rect = container.getBoundingClientRect();
+            let position = ((x - rect.left) / rect.width) * 100;
+            targetX = Math.max(0, Math.min(100, position));
+            requestAnimationFrame(updateSlider);
+        }
+
+        container.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            handleMove(e.clientX);
+        });
+        
+        window.addEventListener('mouseup', () => isResizing = false);
+        window.addEventListener('mousemove', (e) => {
+            if (isResizing) handleMove(e.clientX);
+        });
+
+        // Touch support
+        container.addEventListener('touchstart', (e) => {
+            isResizing = true;
+            handleMove(e.touches[0].clientX);
+        });
+        window.addEventListener('touchend', () => isResizing = false);
+        window.addEventListener('touchmove', (e) => {
+            if (isResizing) handleMove(e.touches[0].clientX);
+        });
+
+        // Drag and Drop interaction
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.firstElementChild.classList.add('drag-zone-active');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.firstElementChild.classList.remove('drag-zone-active');
+            }, false);
+        });
+
+        // Simple accordion logic for FAQ
+        document.querySelectorAll('.group').forEach(item => {
+            item.addEventListener('click', () => {
+                item.classList.toggle('open');
+            });
+        });
+    </script>
+</body></html>
