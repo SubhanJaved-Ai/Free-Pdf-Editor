@@ -619,8 +619,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
     if (activeTool !== 'select' && !(activeTool === 'text' && el.type === 'text')) return;
 
     // Custom robust double click detection (independent of React re-renders)
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const now = Date.now();
+    const now = e.timeStamp;
     const isDoubleClick = lastClickRef.current && 
                           lastClickRef.current.id === elId && 
                           (now - lastClickRef.current.time) < 500;
