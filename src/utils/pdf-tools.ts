@@ -503,3 +503,413 @@ export async function protectPdf(file: File, password: string): Promise<Uint8Arr
   return encryptedBytes;
 }
 
+/**
+ * Unlocks a PDF given a password
+ */
+export async function unlockPdf(file: File, password: string): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer, { password } as any);
+  return await pdfDoc.save();
+}
+
+/**
+ * Extracts specific pages into a single new PDF
+ * Ranges can be comma separated, e.g. "1, 3-5"
+ */
+export async function extractPages(file: File, ranges: string): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const totalPages = pdfDoc.getPageCount();
+  const newPdf = await PDFDocument.create();
+
+  const rangeArray = ranges.split(',').map(r => r.trim()).filter(Boolean);
+  const indicesToExtract = new Set<number>();
+
+  for (const rangeStr of rangeArray) {
+    const parts = rangeStr.split('-');
+    let start = parseInt(parts[0], 10);
+    let end = parts.length > 1 ? parseInt(parts[1], 10) : start;
+
+    if (isNaN(start) || start < 1) start = 1;
+    if (isNaN(end) || end > totalPages) end = totalPages;
+    if (start > end) {
+      const temp = start;
+      start = end;
+      end = temp;
+    }
+
+    for (let i = start - 1; i <= end - 1; i++) {
+      if (i < totalPages) indicesToExtract.add(i);
+    }
+  }
+
+  const sortedIndices = Array.from(indicesToExtract).sort((a, b) => a - b);
+  if (sortedIndices.length > 0) {
+    const copiedPages = await newPdf.copyPages(pdfDoc, sortedIndices);
+    copiedPages.forEach((page) => newPdf.addPage(page));
+  } else {
+    throw new Error('No valid pages found to extract.');
+  }
+
+  return await newPdf.save();
+}
+
+/**
+ * Adds page numbers to a PDF
+ */
+export async function addPageNumbers(file: File, options: { position: string, fontType: string, fontSize: number, color: string, opacity: number, format: string }): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+  
+  let font: any;
+  if (options.fontType === 'Courier') {
+    font = await pdfDoc.embedFont(StandardFonts.Courier);
+  } else if (options.fontType === 'Times') {
+    font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+  } else {
+    font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
+
+  const totalPages = pages.length;
+  const colorVal = hexToRgb(options.color);
+  const rgbColor = rgb(colorVal.r, colorVal.g, colorVal.b);
+
+  pages.forEach((page, index) => {
+    const { width, height } = page.getSize();
+    const pageNum = index + 1;
+    
+    let text = options.format;
+    text = text.replace('{n}', pageNum.toString());
+    text = text.replace('{total}', totalPages.toString());
+
+    const textWidth = font.widthOfTextAtSize(text, options.fontSize);
+    const textHeight = options.fontSize;
+
+    let x = 0;
+    let y = 0;
+    const margin = 30;
+
+    switch (options.position) {
+      case 'top-left':
+        x = margin;
+        y = height - margin - textHeight;
+        break;
+      case 'top-right':
+        x = width - margin - textWidth;
+        y = height - margin - textHeight;
+        break;
+      case 'bottom-left':
+        x = margin;
+        y = margin;
+        break;
+      case 'bottom-right':
+        x = width - margin - textWidth;
+        y = margin;
+        break;
+      case 'center':
+        x = (width - textWidth) / 2;
+        y = margin;
+        break;
+    }
+
+    page.drawText(text, {
+      x,
+      y,
+      size: options.fontSize,
+      font,
+      color: rgbColor,
+      opacity: options.opacity,
+    });
+  });
+
+  return await pdfDoc.save();
+}
+
+/**
+ * Crops margins off a PDF
+ */
+export async function cropPdf(file: File, margins: { top: number, right: number, bottom: number, left: number }): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+
+  pages.forEach(page => {
+    const { width, height } = page.getSize();
+    page.setCropBox(
+      margins.left,
+      margins.bottom,
+      width - margins.left - margins.right,
+      height - margins.top - margins.bottom
+    );
+  });
+
+  return await pdfDoc.save();
+}
+
+/**
+ * Resizes PDF pages
+ */
+export async function resizePdf(file: File, size: string, scaleMode: string): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+
+  let targetWidth = 595.28;
+  let targetHeight = 841.89; // A4 default
+
+  if (size === 'letter') {
+    targetWidth = 612;
+    targetHeight = 792;
+  } else if (size === 'legal') {
+    targetWidth = 612;
+    targetHeight = 1008;
+  }
+
+  pages.forEach(page => {
+    const { width, height } = page.getSize();
+
+    if (scaleMode === 'preserve') {
+      const scaleX = targetWidth / width;
+      const scaleY = targetHeight / height;
+      const scale = Math.min(scaleX, scaleY);
+
+      page.scale(scale, scale);
+      page.setSize(targetWidth, targetHeight);
+    } else {
+      page.scale(targetWidth / width, targetHeight / height);
+      page.setSize(targetWidth, targetHeight);
+    }
+  });
+
+  return await pdfDoc.save();
+}
+
+/**
+ * Edits PDF metadata
+ */
+export async function editPdfMetadata(file: File, metadata: { title?: string, author?: string, subject?: string, creator?: string, keywords?: string }): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  
+  if (metadata.title !== undefined) pdfDoc.setTitle(metadata.title);
+  if (metadata.author !== undefined) pdfDoc.setAuthor(metadata.author);
+  if (metadata.subject !== undefined) pdfDoc.setSubject(metadata.subject);
+  if (metadata.creator !== undefined) pdfDoc.setCreator(metadata.creator);
+  if (metadata.keywords !== undefined) {
+    pdfDoc.setKeywords(metadata.keywords.split(',').map(k => k.trim()).filter(Boolean));
+  }
+
+  return await pdfDoc.save();
+}
+
+export interface FillField {
+  type: 'text' | 'signature' | 'date';
+  pageIndex: number;
+  xPercent: number;
+  yPercent: number;
+  value?: string;
+  image?: string; // data URL
+  widthPercent?: number;
+  heightPercent?: number;
+  fontSize?: number; // raw size for now or percentage? Let's keep it raw for simplicity, or we can scale it.
+}
+
+/**
+ * Fills and signs PDF with text and images
+ */
+export async function fillAndSignPdf(file: File, fields: FillField[]): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  for (const field of fields) {
+    const page = pages[field.pageIndex];
+    if (!page) continue;
+    
+    const { width, height } = page.getSize();
+    
+    const x = field.xPercent * width;
+    // In pdf-lib y=0 is bottom, UI passes top-down yPercent
+    const y = height - (field.yPercent * height);
+
+    if ((field.type === 'text' || field.type === 'date') && field.value) {
+      page.drawText(field.value, {
+        x: x,
+        y: y,
+        size: field.fontSize || 14,
+        font: font,
+        color: rgb(0, 0, 0),
+      });
+    } else if (field.type === 'signature' && field.image) {
+      try {
+        const res = await fetch(field.image);
+        const imgBytes = await res.arrayBuffer();
+        let embeddedImage;
+        if (field.image.startsWith('data:image/png')) {
+          embeddedImage = await pdfDoc.embedPng(imgBytes);
+        } else {
+          embeddedImage = await pdfDoc.embedJpg(imgBytes);
+        }
+        
+        const w = (field.widthPercent || 0.2) * width;
+        const h = (field.heightPercent || 0.1) * height;
+        // Adjust Y so the top-left of the image is at the exact point
+        page.drawImage(embeddedImage, {
+          x: x,
+          y: y - h,
+          width: w,
+          height: h,
+        });
+      } catch (e) {
+        console.error("Failed to embed signature", e);
+      }
+    }
+  }
+
+  return await pdfDoc.save();
+}
+
+export interface RedactRect {
+  pageIndex: number;
+  xPercent: number; // 0 to 1
+  yPercent: number; // 0 to 1 (top down)
+  widthPercent: number; // 0 to 1
+  heightPercent: number; // 0 to 1
+}
+
+/**
+ * Redacts portions of a PDF by drawing black rects and flattening to an image-based PDF
+ */
+export async function redactAndFlattenPdf(file: File, rects: RedactRect[]): Promise<Uint8Array> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+
+  for (const rect of rects) {
+    const page = pages[rect.pageIndex];
+    if (page) {
+      const { width, height } = page.getSize();
+      
+      const x = rect.xPercent * width;
+      const w = rect.widthPercent * width;
+      const h = rect.heightPercent * height;
+      const y = height - (rect.yPercent * height) - h; // convert top-down to bottom-up
+
+      page.drawRectangle({
+        x: x,
+        y: y,
+        width: w,
+        height: h,
+        color: rgb(0, 0, 0),
+      });
+    }
+  }
+
+  const tempPdfBytes = await pdfDoc.save();
+  
+  // Render pages to images to flatten and remove selectable text completely
+  const pdfjs = await getPdfjsLib();
+  const loadingTask = pdfjs.getDocument({ data: tempPdfBytes });
+  const pdf = await loadingTask.promise;
+  
+  const flattenedPdf = await PDFDocument.create();
+  
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2.0 }); // higher scale for crisp text
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    
+    if (!context) continue;
+    
+    await page.render({ canvasContext: context, viewport }).promise;
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    const res = await fetch(dataUrl);
+    const imgBytes = await res.arrayBuffer();
+    
+    const image = await flattenedPdf.embedJpg(imgBytes);
+    const originalViewport = page.getViewport({ scale: 1.0 });
+    const newPage = flattenedPdf.addPage([originalViewport.width, originalViewport.height]);
+    
+    newPage.drawImage(image, {
+      x: 0,
+      y: 0,
+      width: originalViewport.width,
+      height: originalViewport.height,
+    });
+  }
+
+  return await flattenedPdf.save();
+}
+
+/**
+ * Extracts native text from a PDF, falling back to OCR if requested
+ */
+export async function extractPdfText(file: File, useOcr: boolean = false, onProgress?: (p: number) => void): Promise<string> {
+  const pdfjs = await getPdfjsLib();
+  const arrayBuffer = await file.arrayBuffer();
+  
+  // Clone to avoid detach issues with pdf.js
+  const clone = new Uint8Array(arrayBuffer.slice(0));
+  const loadingTask = pdfjs.getDocument({ data: clone });
+  const pdf = await loadingTask.promise;
+  
+  let fullText = '';
+  const totalPages = pdf.numPages;
+  
+  // Import OCR dynamically to avoid circular or early execution issues if possible,
+  // but we can just require it if we want. Let's use the native tesseract.js directly here 
+  // to avoid modifying too many files or depending on ocrWorker.ts UI ties.
+  let worker: any = null;
+  if (useOcr) {
+    const { createWorker } = await import('tesseract.js');
+    worker = await createWorker('eng', 1, {
+      logger: (m: any) => {
+        if (m.status === 'recognizing' && onProgress) {
+          // Average progress across all pages rough estimate
+          // or just pass the raw page progress
+        }
+      }
+    });
+  }
+
+  try {
+    for (let i = 1; i <= totalPages; i++) {
+      const page = await pdf.getPage(i);
+      
+      if (useOcr && worker) {
+        // Render page for OCR
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        if (context) {
+          await page.render({ canvasContext: context, viewport }).promise;
+          const { data } = await worker.recognize(canvas);
+          fullText += `--- Page ${i} ---\n${data.text}\n\n`;
+          if (onProgress) onProgress(i / totalPages);
+        }
+      } else {
+        // Native extraction
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => item.str).join(' ');
+        fullText += `--- Page ${i} ---\n${pageText}\n\n`;
+        if (onProgress) onProgress(i / totalPages);
+      }
+    }
+  } finally {
+    if (worker) {
+      await worker.terminate();
+    }
+  }
+  
+  return fullText;
+}
