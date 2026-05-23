@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef, DragEvent, ChangeEvent } from 'react';
+import React, { useState, DragEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEditorStore } from '../store/useEditorStore';
-import { checkAutoSave, clearAutoSave, AutoSaveData } from '../hooks/useAutoSave';
 import { parsePdfLayout } from '../utils/pdfParser';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { Loader2, FileText, ChevronDown, Type, Image as ImageIcon, PenTool, Hexagon } from 'lucide-react';
+import { Loader2, FileText, ChevronDown, CheckCircle2, Shield, Zap, UploadCloud, ArrowRight, LayoutPanelTop, MousePointer2, Type, Image as ImageIcon, Scissors, Settings, Lock, FileSignature } from 'lucide-react';
+import { Navbar } from '../components/layout/Navbar';
+import { Footer } from '../components/layout/Footer';
+import Link from 'next/link';
 
 function cloneUint8Array(arr: Uint8Array): Uint8Array {
   const clone = new Uint8Array(arr.length);
@@ -19,82 +20,7 @@ export default function HomePage() {
   const { setPdf } = useEditorStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [savedSession, setSavedSession] = useState<AutoSaveData | null>(null);
-
-  // FAQ state
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  // Slider state
-  const sliderContainerRef = useRef<HTMLDivElement>(null);
-  const [sliderPosition, setSliderPosition] = useState(50);
-  const [isResizing, setIsResizing] = useState(false);
-
-  useEffect(() => {
-    checkAutoSave().then(data => {
-      if (data && data.pdfBytes) {
-        setSavedSession(data);
-      }
-    });
-  }, []);
-
-  // Handle window mouse events for slider
-  useEffect(() => {
-    const handleMouseUp = () => setIsResizing(false);
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing && sliderContainerRef.current) {
-        const rect = sliderContainerRef.current.getBoundingClientRect();
-        let pos = ((e.clientX - rect.left) / rect.width) * 100;
-        setSliderPosition(Math.max(0, Math.min(100, pos)));
-      }
-    };
-    
-    const handleTouchEnd = () => setIsResizing(false);
-    const handleTouchMove = (e: TouchEvent) => {
-      if (isResizing && sliderContainerRef.current) {
-        const rect = sliderContainerRef.current.getBoundingClientRect();
-        let pos = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
-        setSliderPosition(Math.max(0, Math.min(100, pos)));
-      }
-    };
-
-    if (isResizing) {
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('touchend', handleTouchEnd);
-      window.addEventListener('touchmove', handleTouchMove);
-    }
-
-    return () => {
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchmove', handleTouchMove);
-    };
-  }, [isResizing]);
-
-  const handleRestoreSession = () => {
-    if (!savedSession) return;
-    setIsLoading(true);
-    try {
-      const url = URL.createObjectURL(new Blob([savedSession.pdfBytes as any], { type: 'application/pdf' }));
-      setPdf(url, savedSession.pdfBytes, savedSession.fileName || 'restored_document.pdf', []);
-      useEditorStore.setState({ 
-        elements: savedSession.elements || [],
-        zoom: savedSession.zoom || 100,
-        currentPageIndex: savedSession.pageIndex || 0
-      });
-      router.push('/editor');
-    } catch (e) {
-      console.error(e);
-      alert('Failed to restore session.');
-      setIsLoading(false);
-    }
-  };
-
-  const handleDiscardSession = async () => {
-    await clearAutoSave();
-    setSavedSession(null);
-  };
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const processPdfFile = async (file: File) => {
     setIsLoading(true);
@@ -143,207 +69,321 @@ export default function HomePage() {
     }
   };
 
+  const popularTools = [
+    { title: 'Edit PDF', icon: <Type size={20} />, href: '/editor?tool=edit-pdf' },
+    { title: 'Merge PDF', icon: <LayoutPanelTop size={20} />, href: '/editor?tool=merge-pdf' },
+    { title: 'Split PDF', icon: <Scissors size={20} />, href: '/editor?tool=split-pdf' },
+    { title: 'Compress PDF', icon: <Settings size={20} />, href: '/editor?tool=compress-pdf' },
+    { title: 'Sign PDF', icon: <FileSignature size={20} />, href: '/editor?tool=sign-pdf' },
+    { title: 'Protect PDF', icon: <Lock size={20} />, href: '/editor?tool=protect-pdf' },
+  ];
+
   return (
-    <div className="bg-background text-on-background font-body-md selection:bg-secondary-container selection:text-on-secondary-container relative overflow-x-hidden min-h-screen">
-      {/* Heavy SVG grain and animations removed for 60fps performance */}
-      <div className="mesh-gradient-optimized"></div>
+    <div className="bg-background text-on-background font-body-md selection:bg-secondary-container selection:text-on-secondary-container min-h-screen flex flex-col">
+      <Navbar />
 
-      {/* TopNavBar */}
-      <nav className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center h-16 px-6">
-          <div className="flex items-center gap-3">
-            <Hexagon className="w-8 h-8 text-primary" fill="currentColor" />
-            <span className="font-display text-headline-md font-bold text-primary tracking-tight">AetherPDF</span>
+      <main className="flex-grow pt-16">
+        {/* SECTION 1: HERO */}
+        <section className="relative pt-24 pb-32 overflow-hidden px-6">
+          {/* Subtle mesh background */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />
+            <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-[120px]" />
           </div>
-          <div className="hidden md:flex items-center gap-8">
-            <a className="font-body-md text-on-surface-variant hover:text-primary transition-colors font-medium" href="#home">Home</a>
-            <a className="font-body-md text-on-surface-variant hover:text-primary transition-colors font-medium" href="#features">Features</a>
-            <a className="font-body-md text-on-surface-variant hover:text-primary transition-colors font-medium" href="#faq">FAQ</a>
-          </div>
-          <div className="flex items-center gap-4">
-            <label className="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-md hover:shadow-lg hover:shadow-primary/20 active:scale-95 transition-all cursor-pointer">
-              Upload PDF
-              <input type="file" accept="application/pdf" onChange={handleFileChange} className="hidden" />
-            </label>
-          </div>
-        </div>
-      </nav>
 
-      {/* Hero Section */}
-      <section id="home" className="pt-32 pb-24 px-6 relative z-10">
-        <div className="max-w-5xl mx-auto text-center">
-          
-          {/* Recovery Modal */}
-          {savedSession && !isLoading && (
-            <div className="max-w-2xl mx-auto mb-8 p-6 rounded-2xl bg-white border border-primary/20 shadow-xl shadow-primary/10 flex flex-col md:flex-row items-center justify-between gap-6 animate-fade-up">
-              <div className="text-left">
-                <h3 className="font-headline-md text-primary mb-1">Restore previous session?</h3>
-                <p className="text-sm text-on-surface-variant">We found an unsaved document from {new Date(savedSession.timestamp).toLocaleTimeString()}.</p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={handleDiscardSession} className="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-variant rounded-lg transition-colors">
-                  Start Fresh
-                </button>
-                <button onClick={handleRestoreSession} className="px-6 py-2 text-sm font-bold text-white bg-primary rounded-lg shadow-md hover:bg-primary-container transition-colors">
-                  Restore
-                </button>
-              </div>
+          <div className="max-w-4xl mx-auto text-center relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-8 animate-fade-up">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              Phase 1 Live — 100% Free Engine
             </div>
-          )}
+            
+            <h1 className="font-display text-[56px] md:text-[80px] leading-[1.1] font-bold tracking-tight mb-6 animate-fade-up stagger-1 text-on-surface">
+              Edit Any PDF Like a Pro <span className="text-primary">— Free</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-on-surface-variant max-w-2xl mx-auto mb-10 font-medium animate-fade-up stagger-2">
+              Fast. Beautiful. No Login Required. Experience the ultimate browser-based PDF workspace.
+            </p>
 
-          {isLoading ? (
-            <div className="max-w-3xl mx-auto h-72 rounded-[2.5rem] bg-white/60 backdrop-blur-md border border-outline-variant flex flex-col items-center justify-center gap-4 shadow-xl">
-              <Loader2 size={48} className="text-primary animate-spin" />
-              <h4 className="font-headline-md text-primary">Processing PDF Document...</h4>
-              <p className="text-sm text-on-surface-variant">Engineering native text boundaries.</p>
+            <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-12 animate-fade-up stagger-2 font-medium text-on-surface-variant text-sm md:text-base">
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 text-primary" /> Free</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 text-primary" /> No Sign Up</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 text-primary" /> Fast</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-5 h-5 text-primary" /> Secure</span>
             </div>
-          ) : (
-            <>
-              <h1 className="font-display text-display md:text-[72px] mb-6 animate-fade-up">
-                Edit Any PDF. <span className="text-primary">Instantly.</span>
-              </h1>
-              <p className="font-body-lg text-on-surface-variant mb-12 max-w-2xl mx-auto animate-fade-up stagger-1">
-                Professional PDF editing for free. No signup, no login, just precision tools designed for high-stakes productivity.
-              </p>
 
-              {/* Drag and Drop Zone */}
-              <div 
-                className="max-w-3xl mx-auto group animate-fade-up stagger-2"
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <div className={`border-2 border-dashed rounded-[2.5rem] p-16 transition-all duration-300 relative overflow-hidden cursor-pointer ${
-                  isDragOver ? 'border-primary bg-primary/5 scale-[1.01] shadow-2xl shadow-primary/10' : 'border-outline-variant bg-surface-container-lowest/60 hover:border-primary shadow-2xl shadow-primary/5'
-                }`}>
-                  <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            {/* Drag & Drop Area */}
+            <div className="max-w-3xl mx-auto animate-fade-up stagger-3">
+              {isLoading ? (
+                <div className="h-80 rounded-3xl bg-white border border-outline-variant shadow-xl flex flex-col items-center justify-center gap-4">
+                  <Loader2 size={48} className="text-primary animate-spin" />
+                  <h4 className="font-headline-md text-primary font-semibold">Processing Document...</h4>
+                  <p className="text-sm text-on-surface-variant">Extracting text blocks securely.</p>
+                </div>
+              ) : (
+                <div 
+                  className={`relative group border-2 border-dashed rounded-3xl p-16 transition-all duration-300 overflow-hidden cursor-pointer bg-white ${
+                    isDragOver ? 'border-primary bg-primary/5 scale-[1.02] shadow-2xl shadow-primary/20' : 'border-outline-variant hover:border-primary shadow-xl shadow-black/5 hover:shadow-2xl hover:shadow-primary/10'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <input type="file" accept="application/pdf" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" />
-                  <div className="relative z-10 flex flex-col items-center">
-                    <div className="w-24 h-24 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-inner">
-                      <FileText className="text-primary w-12 h-12" />
+                  <div className="relative z-10 flex flex-col items-center pointer-events-none">
+                    <div className="w-24 h-24 bg-surface-container rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white text-primary transition-colors duration-300">
+                      <UploadCloud className="w-12 h-12" />
                     </div>
-                    <h3 className="font-headline-md text-primary mb-2">Drop your PDF here</h3>
-                    <p className="font-body-sm text-on-surface-variant">or click to browse your files</p>
+                    <h3 className="text-2xl font-bold text-on-surface mb-2">Drag & Drop Upload Area</h3>
+                    <p className="text-on-surface-variant mb-6">or click to browse your files</p>
+                    <div className="bg-primary text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 group-hover:scale-105 transition-transform pointer-events-auto shadow-md">
+                      Edit PDF Now <ArrowRight size={18} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-10 animate-fade-up stagger-3">
+              <Link href="/tools" className="text-on-surface font-semibold hover:text-primary transition-colors inline-flex items-center gap-2 group">
+                Explore All Tools <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 2: POPULAR TOOLS GRID */}
+        <section className="py-24 bg-surface-container-lowest border-y border-outline-variant/30 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+              <div>
+                <h2 className="font-display text-4xl font-bold text-on-surface mb-4">Popular PDF Tools</h2>
+                <p className="text-on-surface-variant text-lg">The most powerful suite for your daily document needs.</p>
+              </div>
+              <Link href="/tools" className="bg-surface-container text-on-surface px-6 py-2.5 rounded-lg font-semibold hover:bg-outline-variant/30 transition-colors">
+                View All
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+              {popularTools.map((tool, i) => (
+                <Link key={i} href={tool.href} className="bg-white p-6 rounded-2xl border border-outline-variant/40 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-surface-container text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                    {tool.icon}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-on-surface text-lg mb-1">{tool.title}</h3>
+                    <p className="text-on-surface-variant text-sm">Professional utility</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 3: WHY VELTISPDF */}
+        <section className="py-32 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="font-display text-4xl font-bold text-on-surface mb-6">Why users choose VeltisPDF</h2>
+              <p className="text-xl text-on-surface-variant max-w-2xl mx-auto">Engineered differently from the ground up to respect your time and privacy.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6">
+                  <Zap size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-on-surface mb-3">Lightning Fast</h3>
+                <p className="text-on-surface-variant">Everything runs entirely inside your browser. No uploading to external servers means instant processing.</p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary mb-6">
+                  <Shield size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-on-surface mb-3">Privacy First</h3>
+                <p className="text-on-surface-variant">Your documents never leave your device. We couldn't look at them even if we wanted to.</p>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-2xl bg-veltis-cyan/10 flex items-center justify-center text-veltis-cyan mb-6">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-on-surface mb-3">Professional Output</h3>
+                <p className="text-on-surface-variant">Native vector graphics and text extraction ensures your exported PDFs remain crisp and unpixelated.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 4: LIVE PRODUCT PREVIEW (CSS Mockup) */}
+        <section className="py-24 bg-[#0A0A0F] text-white overflow-hidden px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="font-display text-4xl font-bold mb-6">Experience Premium Craftsmanship</h2>
+              <p className="text-xl text-zinc-400 max-w-2xl mx-auto">A UI designed to stay out of your way, giving you full control over your document.</p>
+            </div>
+
+            <div className="relative rounded-2xl border border-white/10 bg-[#12121A] shadow-2xl overflow-hidden ring-1 ring-white/5 aspect-video md:aspect-[16/9] max-w-5xl mx-auto flex flex-col group">
+              {/* Window Header */}
+              <div className="h-12 border-b border-white/10 bg-[#0D0D12] flex items-center px-4 justify-between">
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                </div>
+                <div className="text-xs font-semibold text-zinc-500 font-mono">VeltisPDF Editor Pro</div>
+                <div className="w-16"></div>
+              </div>
+
+              {/* Editor Body */}
+              <div className="flex-1 flex overflow-hidden">
+                {/* Left Sidebar (Pages) */}
+                <div className="w-48 border-r border-white/5 bg-[#0F0F14] hidden md:flex flex-col p-4 gap-4">
+                  <div className="text-xs font-bold text-zinc-600 uppercase tracking-wider mb-2">Pages</div>
+                  <div className="aspect-[1/1.4] bg-white rounded flex items-center justify-center ring-2 ring-primary relative">
+                    <div className="w-full h-full p-2 opacity-50 flex flex-col gap-1">
+                      <div className="w-full h-1 bg-zinc-300 rounded"></div>
+                      <div className="w-3/4 h-1 bg-zinc-300 rounded"></div>
+                      <div className="w-full h-1 bg-zinc-300 rounded mt-2"></div>
+                    </div>
+                  </div>
+                  <div className="aspect-[1/1.4] bg-white/10 rounded border border-white/5"></div>
+                </div>
+
+                {/* Canvas Area */}
+                <div className="flex-1 bg-[#1A1A24] relative flex items-center justify-center p-8">
+                  {/* Floating Toolbar Mock */}
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-[#2A2A35]/90 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 flex items-center gap-4 shadow-2xl z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 transform translate-y-4 group-hover:translate-y-0">
+                    <Type size={16} className="text-white" />
+                    <ImageIcon size={16} className="text-zinc-400" />
+                    <Settings size={16} className="text-zinc-400" />
+                    <div className="w-px h-4 bg-white/20"></div>
+                    <div className="text-xs font-medium text-white px-2 py-1 bg-primary rounded-full">Save</div>
+                  </div>
+
+                  {/* Document Paper */}
+                  <div className="bg-white w-full max-w-sm aspect-[1/1.4] rounded shadow-2xl relative p-8">
+                    <div className="w-full h-8 bg-zinc-100 rounded mb-6 flex items-center px-4 relative group/elem cursor-pointer">
+                      <div className="w-1/2 h-4 bg-zinc-300 rounded"></div>
+                      {/* Selection Box Mock */}
+                      <div className="absolute inset-0 border-2 border-primary rounded opacity-0 group-hover/elem:opacity-100 transition-opacity">
+                         <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full"></div>
+                         <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full"></div>
+                         <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full"></div>
+                         <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-primary rounded-full"></div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="w-full h-3 bg-zinc-200 rounded"></div>
+                      <div className="w-full h-3 bg-zinc-200 rounded"></div>
+                      <div className="w-4/5 h-3 bg-zinc-200 rounded"></div>
+                      <div className="w-full h-3 bg-zinc-200 rounded mt-6"></div>
+                      <div className="w-3/4 h-3 bg-zinc-200 rounded"></div>
+                    </div>
+                    
+                    {/* Fake Cursor */}
+                    <div className="absolute top-[40%] left-[30%] text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-1000 delay-300 animate-bounce">
+                      <MousePointer2 size={24} fill="currentColor" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Sidebar (Properties) */}
+                <div className="w-56 border-l border-white/5 bg-[#0F0F14] hidden lg:flex flex-col p-5 gap-6">
+                  <div>
+                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Typography</div>
+                    <div className="bg-[#1A1A24] border border-white/10 rounded p-2 flex justify-between items-center mb-2">
+                      <span className="text-xs text-white">Inter</span>
+                      <ChevronDown size={14} className="text-zinc-500" />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="bg-[#1A1A24] border border-white/10 rounded p-2 flex-1 text-center text-xs text-white">Regular</div>
+                      <div className="bg-[#1A1A24] border border-white/10 rounded p-2 flex-1 text-center text-xs text-white">16px</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Color</div>
+                    <div className="flex gap-2">
+                      <div className="w-6 h-6 rounded-full bg-zinc-900 border border-white/20"></div>
+                      <div className="w-6 h-6 rounded-full bg-primary border border-primary"></div>
+                      <div className="w-6 h-6 rounded-full bg-red-500"></div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Features Bento Grid */}
-      <section id="features" className="py-24 px-6 relative z-10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
-            <div className="max-w-xl">
-              <span className="text-secondary font-label-sm uppercase tracking-widest mb-4 block">Precision Toolkit</span>
-              <h2 className="font-display text-headline-lg">Engineered for total document control.</h2>
             </div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="reveal p-10 bg-gradient-to-br from-white to-surface-container-lowest backdrop-blur-xl border border-outline-variant/40 rounded-[2.5rem] flex flex-col justify-between h-80 group hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(42,20,180,0.3)] hover:border-primary/50 transition-all duration-500 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full transition-transform duration-500 group-hover:scale-150"></div>
-              <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-primary/30 relative z-10">
-                <Type className="w-8 h-8" strokeWidth={2.5} />
+        {/* SECTION 5: WORKFLOW */}
+        <section className="py-32 px-6 bg-surface">
+          <div className="max-w-5xl mx-auto text-center">
+            <h2 className="font-display text-4xl font-bold text-on-surface mb-16">Simple 3-Step Flow</h2>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative">
+              {/* Connecting Line */}
+              <div className="hidden md:block absolute top-1/2 left-[15%] right-[15%] h-px bg-outline-variant/50 -z-10 -translate-y-1/2"></div>
+              
+              <div className="flex flex-col items-center bg-surface p-6">
+                <div className="w-20 h-20 rounded-full bg-white border border-outline-variant shadow-xl flex items-center justify-center mb-6 text-2xl font-bold text-primary">1</div>
+                <h3 className="text-xl font-bold text-on-surface mb-2">Upload PDF</h3>
+                <p className="text-on-surface-variant text-sm">Drag & drop your file securely.</p>
               </div>
-              <div className="relative z-10 mt-auto">
-                <h4 className="font-headline-md text-[28px] font-bold mb-3 text-on-surface group-hover:text-primary transition-colors">Edit Text</h4>
-                <p className="font-body-md text-on-surface-variant leading-relaxed">Modify text directly within the PDF. We automatically match your original font, size, and styling.</p>
+              <div className="flex flex-col items-center bg-surface p-6">
+                <div className="w-20 h-20 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center mb-6 text-2xl font-bold text-white">2</div>
+                <h3 className="text-xl font-bold text-on-surface mb-2">Edit Easily</h3>
+                <p className="text-on-surface-variant text-sm">Modify text, images, and pages.</p>
               </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="reveal p-10 bg-gradient-to-br from-white to-surface-container-lowest backdrop-blur-xl border border-outline-variant/40 rounded-[2.5rem] flex flex-col justify-between h-80 group hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(129,39,207,0.3)] hover:border-secondary/50 transition-all duration-500 relative overflow-hidden" style={{ transitionDelay: '100ms' }}>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-bl-full transition-transform duration-500 group-hover:scale-150"></div>
-              <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-secondary/30 relative z-10">
-                <ImageIcon className="w-8 h-8" strokeWidth={2.5} />
-              </div>
-              <div className="relative z-10 mt-auto">
-                <h4 className="font-headline-md text-[28px] font-bold mb-3 text-on-surface group-hover:text-secondary transition-colors">Edit Images</h4>
-                <p className="font-body-md text-on-surface-variant leading-relaxed">Replace, resize, or reposition images flawlessly without ever losing layout quality or breaking margins.</p>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="reveal p-10 bg-gradient-to-br from-white to-surface-container-lowest backdrop-blur-xl border border-outline-variant/40 rounded-[2.5rem] flex flex-col justify-between h-80 group hover:-translate-y-2 hover:shadow-[0_20px_40px_-15px_rgba(42,20,180,0.3)] hover:border-primary/50 transition-all duration-500 relative overflow-hidden" style={{ transitionDelay: '200ms' }}>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full transition-transform duration-500 group-hover:scale-150"></div>
-              <div className="w-16 h-16 rounded-2xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-primary/30 relative z-10">
-                <PenTool className="w-8 h-8" strokeWidth={2.5} />
-              </div>
-              <div className="relative z-10 mt-auto">
-                <h4 className="font-headline-md text-[28px] font-bold mb-3 text-on-surface group-hover:text-primary transition-colors">Sign PDFs</h4>
-                <p className="font-body-md text-on-surface-variant leading-relaxed">Create professional e-signatures. Upload your own, or choose from our extensive premium cursive library.</p>
+              <div className="flex flex-col items-center bg-surface p-6">
+                <div className="w-20 h-20 rounded-full bg-white border border-outline-variant shadow-xl flex items-center justify-center mb-6 text-2xl font-bold text-primary">3</div>
+                <h3 className="text-xl font-bold text-on-surface mb-2">Export Instantly</h3>
+                <p className="text-on-surface-variant text-sm">Download your perfect document.</p>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Removed Before/After Slider due to broken/inconsistent images */}
 
-      {/* FAQ Section */}
-      <section id="faq" className="py-32 px-6 relative z-10 bg-surface-container-lowest/50 border-t border-outline-variant/20">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-[48px] font-bold text-on-surface mb-6 tracking-tight">Frequently Asked Questions</h2>
-            <p className="font-body-lg text-on-surface-variant max-w-2xl mx-auto">
-              Everything you need to know about AetherPDF's capabilities, security, and privacy.
-            </p>
-          </div>
-          <div className="space-y-6">
-            {[
-              { q: 'Is it truly 100% free?', a: 'Yes. AetherPDF provides its core engineering engine completely for free. There are no daily limits, no hidden paywalls, and absolutely no watermarks on your exported PDFs.' },
-              { q: 'How secure are my highly sensitive files?', a: 'Military-grade secure. All document processing happens entirely locally within your browser\'s memory. Your files are NEVER uploaded to any external server. Once you close the tab, your data is gone forever.' },
-              { q: 'Do I need to create an account or provide my email?', a: 'No registration, no emails, no hassle. We strongly value your privacy and time; you can simply drag and drop your file to start editing immediately.' },
-              { q: 'Can I edit the actual original text, or is it just an overlay?', a: 'AetherPDF uses advanced layout parsing to actually extract and modify the native text elements inside your document, perfectly matching the original font sizes and styles.' },
-            ].map((faq, i) => (
-              <div 
-                key={i}
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className={`rounded-3xl p-8 transition-all duration-300 cursor-pointer border ${
-                  openFaq === i 
-                    ? 'bg-primary text-white border-primary shadow-2xl shadow-primary/20 scale-[1.02]' 
-                    : 'bg-white hover:bg-surface-container-lowest border-outline-variant/30 hover:border-primary/40 hover:shadow-xl'
-                }`}
-              >
-                <div className="flex justify-between items-center gap-6">
-                  <h6 className={`text-xl md:text-2xl font-semibold leading-tight ${openFaq === i ? 'text-white' : 'text-on-surface'}`}>
-                    {faq.q}
-                  </h6>
-                  <div className={`p-2 rounded-full transition-transform duration-300 flex-shrink-0 ${openFaq === i ? 'bg-white/20 rotate-180' : 'bg-surface-container'}`}>
-                    <ChevronDown className={`w-6 h-6 ${openFaq === i ? 'text-white' : 'text-primary'}`} />
+        {/* SECTION 7: FAQ */}
+        <section className="py-32 px-6" id="faq">
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="font-display text-4xl font-bold text-on-surface mb-6">Frequently Asked Questions</h2>
+            </div>
+            <div className="space-y-4">
+              {[
+                { q: 'Is it free?', a: 'Yes. VeltisPDF provides its core engine completely free of charge with no hidden paywalls.' },
+                { q: 'Is signup required?', a: 'No registration or emails needed. Just drag, drop, and edit.' },
+                { q: 'Is my PDF secure?', a: '100% secure. Processing happens locally in your browser. Your files are never uploaded to our servers.' },
+                { q: 'Can I edit scanned PDFs?', a: 'We currently support native vector PDFs for text extraction. OCR for scanned PDFs is on our roadmap.' },
+                { q: 'Does it work on mobile?', a: 'Yes, VeltisPDF is responsive and works flawlessly on tablets and mobile devices.' },
+              ].map((faq, i) => (
+                <div 
+                  key={i}
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className={`rounded-2xl p-6 transition-all duration-300 cursor-pointer border ${
+                    openFaq === i 
+                      ? 'bg-surface-container-low border-primary/30 shadow-md' 
+                      : 'bg-white hover:bg-surface-container-lowest border-outline-variant/30 hover:border-outline-variant'
+                  }`}
+                >
+                  <div className="flex justify-between items-center gap-4">
+                    <h6 className="text-lg font-semibold text-on-surface">
+                      {faq.q}
+                    </h6>
+                    <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform duration-300 ${openFaq === i ? 'rotate-180 text-primary' : ''}`} />
+                  </div>
+                  <div className={`overflow-hidden transition-all duration-300 ${openFaq === i ? 'max-h-40 mt-4 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <p className="text-on-surface-variant">
+                      {faq.a}
+                    </p>
                   </div>
                 </div>
-                {openFaq === i && (
-                  <p className="text-lg mt-6 leading-relaxed opacity-90 animate-fade-up">
-                    {faq.a}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-on-background text-white py-16 relative z-10">
-        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-12">
-          <div className="flex flex-col items-center md:items-start gap-4">
-            <div className="flex items-center gap-3">
-              <span className="font-display text-headline-md text-white font-bold">AetherPDF</span>
+              ))}
             </div>
-            <p className="font-body-sm text-outline-variant/60 max-w-sm text-center md:text-left">
-              Precision engineering for digital documents. Built for the modern professional.
-            </p>
           </div>
-          <div className="text-outline-variant/40 font-body-sm">
-            © 2026 AetherPDF.
-          </div>
-        </div>
-      </footer>
+        </section>
+      </main>
+
+      <Footer />
     </div>
   );
 }

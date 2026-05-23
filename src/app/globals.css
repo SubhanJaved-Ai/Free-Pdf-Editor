@@ -23,10 +23,10 @@
   --color-surface-container-high: #eae6f3;
   
   /* Retain for legacy editor components temporarily if needed */
-  --color-aether-indigo: #4338ca;
-  --color-aether-violet: #8127cf;
-  --color-aether-cyan: #06b6d4;
-  --color-aether-pink: #ec4899;
+  --color-veltis-indigo: #4338ca;
+  --color-veltis-violet: #8127cf;
+  --color-veltis-cyan: #06b6d4;
+  --color-veltis-pink: #ec4899;
 }
 
 :root {

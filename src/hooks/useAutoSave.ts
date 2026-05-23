@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { get, set, del } from 'idb-keyval';
 import { useEditorStore } from '@/store/useEditorStore';
 
-const AUTO_SAVE_KEY = 'aetherpdf_autosave';
+const AUTO_SAVE_KEY = 'veltispdf_autosave';
 const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
 const DEBOUNCE_DELAY = 2000; // 2 second debounce for edit-triggered saves
 

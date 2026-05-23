@@ -308,9 +308,9 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
         
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded bg-gradient-to-tr from-primary via-primary-container to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-on-primary font-bold text-sm tracking-widest">Æ</span>
+            <span className="text-on-primary font-bold text-sm tracking-widest">V</span>
           </div>
-          <span className="font-display font-semibold text-lg tracking-tight text-on-surface hidden lg:inline">Aether<span className="text-primary">PDF</span></span>
+          <span className="font-display font-semibold text-lg tracking-tight text-on-surface hidden lg:inline">Veltis<span className="text-primary">PDF</span></span>
         </div>
         
         <div className="h-6 w-px bg-outline-variant/50 hidden md:block" />

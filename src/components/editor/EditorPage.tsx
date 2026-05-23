@@ -961,10 +961,10 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
                     {/* Rotation Lollipop Handle */}
                     <div 
                       onMouseDown={(e) => handleElementMouseDown(e, el.id, 'rotate')}
-                      className="absolute -top-6 left-1/2 -translate-x-1/2 w-3 h-3 bg-aether-violet border border-white rounded-full cursor-alias flex items-center justify-center pointer-events-auto"
+                      className="absolute -top-6 left-1/2 -translate-x-1/2 w-3 h-3 bg-veltis-violet border border-white rounded-full cursor-alias flex items-center justify-center pointer-events-auto"
                       title="Drag to Rotate"
                     >
-                      <div className="w-[1px] h-3 bg-aether-violet absolute top-3" />
+                      <div className="w-[1px] h-3 bg-veltis-violet absolute top-3" />
                     </div>
                   </>
                 )}

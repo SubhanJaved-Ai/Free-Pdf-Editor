@@ -418,7 +418,7 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
           <div 
             key={`${pageIdx}-${visualIdx}`}
             className={`transition-colors duration-200 border-2 rounded-lg ${
-              currentPageIndex === pageIdx ? 'border-aether-indigo/60 shadow-2xl shadow-aether-indigo/5' : 'border-transparent'
+              currentPageIndex === pageIdx ? 'border-veltis-indigo/60 shadow-2xl shadow-veltis-indigo/5' : 'border-transparent'
             }`}
             onClick={() => setCurrentPageIndex(pageIdx)}
           >

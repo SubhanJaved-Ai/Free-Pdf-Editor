@@ -230,7 +230,7 @@ export default function EditorPage() {
       const blob = new Blob([completedBytes as any], { type: 'application/pdf' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = currentFileName ? `aether_${currentFileName}` : 'aether_document.pdf';
+      link.download = currentFileName ? `veltis_${currentFileName}` : 'veltis_document.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -570,7 +570,7 @@ export default function EditorPage() {
                   placeholder="Enter your name..."
                   value={sigTypeWords}
                   onChange={(e) => setSigTypeWords(e.target.value)}
-                  className="w-full bg-zinc-950 border border-white/5 text-sm p-3 rounded-lg text-white font-medium focus:outline-none focus:border-aether-indigo"
+                  className="w-full bg-zinc-950 border border-white/5 text-sm p-3 rounded-lg text-white font-medium focus:outline-none focus:border-veltis-indigo"
                 />
                 
                 {/* Cursive Live Preview */}
@@ -588,7 +588,7 @@ export default function EditorPage() {
             <button
               onClick={saveSignature}
               disabled={sigTab === 'type' && !sigTypeWords.trim()}
-              className="w-full mt-6 py-2.5 rounded-lg bg-gradient-to-r from-aether-violet to-aether-cyan font-bold text-xs text-white shadow-lg shadow-aether-indigo/20 hover:opacity-95 transition"
+              className="w-full mt-6 py-2.5 rounded-lg bg-gradient-to-r from-veltis-violet to-veltis-cyan font-bold text-xs text-white shadow-lg shadow-veltis-indigo/20 hover:opacity-95 transition"
             >
               Save Signature
             </button>

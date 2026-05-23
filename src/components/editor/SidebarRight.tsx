@@ -327,7 +327,7 @@ export const SidebarRight: React.FC = () => {
                 max="360"
                 value={selectedElement.rotation || 0}
                 onChange={(e) => updateElement(selectedElement.id, { rotation: parseInt(e.target.value) })}
-                className="w-full accent-aether-violet"
+                className="w-full accent-veltis-violet"
               />
             </div>
             <div>
@@ -341,7 +341,7 @@ export const SidebarRight: React.FC = () => {
                 max="100"
                 value={Math.round((selectedElement.opacity || 1) * 100)}
                 onChange={(e) => updateElement(selectedElement.id, { opacity: parseInt(e.target.value) / 100 })}
-                className="w-full accent-aether-violet"
+                className="w-full accent-veltis-violet"
               />
             </div>
           </div>
@@ -351,7 +351,7 @@ export const SidebarRight: React.FC = () => {
         {selectedElement.type === 'text' && (
           <div className={`${blockClass} space-y-4 ${layoutMode === 'horizontal' ? '' : 'border-t border-white/5 pt-4'}`}>
             <div className="flex items-center gap-1.5 text-zinc-300">
-              <Type size={13} className="text-aether-cyan" />
+              <Type size={13} className="text-veltis-cyan" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Typography</span>
             </div>
 
@@ -376,7 +376,7 @@ export const SidebarRight: React.FC = () => {
                 max="72"
                 value={selectedElement.fontSize || 14}
                 onChange={(e) => updateElement(selectedElement.id, { fontSize: parseInt(e.target.value) })}
-                className="w-full accent-aether-cyan"
+                className="w-full accent-veltis-cyan"
               />
             </div>
 
@@ -388,7 +388,7 @@ export const SidebarRight: React.FC = () => {
                   onClick={() => updateElement(selectedElement.id, { fontWeight: selectedElement.fontWeight === 'bold' ? 'normal' : 'bold' })}
                   className={`p-2 rounded border text-xs transition ${
                     selectedElement.fontWeight === 'bold' 
-                      ? 'bg-aether-violet/20 border-aether-violet text-white' 
+                      ? 'bg-veltis-violet/20 border-veltis-violet text-white' 
                       : 'bg-zinc-950 border-white/5 text-zinc-400 hover:text-white'
                   }`}
                   title="Bold"
@@ -399,7 +399,7 @@ export const SidebarRight: React.FC = () => {
                   onClick={() => updateElement(selectedElement.id, { fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' })}
                   className={`p-2 rounded border text-xs transition ${
                     selectedElement.fontStyle === 'italic' 
-                      ? 'bg-aether-violet/20 border-aether-violet text-white' 
+                      ? 'bg-veltis-violet/20 border-veltis-violet text-white' 
                       : 'bg-zinc-950 border-white/5 text-zinc-400 hover:text-white'
                   }`}
                   title="Italic"
@@ -410,7 +410,7 @@ export const SidebarRight: React.FC = () => {
                   onClick={() => updateElement(selectedElement.id, { textDecoration: selectedElement.textDecoration === 'underline' ? 'none' : 'underline' })}
                   className={`p-2 rounded border text-xs transition ${
                     selectedElement.textDecoration === 'underline' 
-                      ? 'bg-aether-violet/20 border-aether-violet text-white' 
+                      ? 'bg-veltis-violet/20 border-veltis-violet text-white' 
                       : 'bg-zinc-950 border-white/5 text-zinc-400 hover:text-white'
                   }`}
                   title="Underline"

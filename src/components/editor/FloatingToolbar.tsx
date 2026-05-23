@@ -108,7 +108,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({ selectedElemen
           className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white transition flex items-center gap-1 px-1.5 border-r border-white/5"
           title="Edit Text Content"
         >
-          <Type size={12} className="text-aether-cyan" />
+          <Type size={12} className="text-veltis-cyan" />
           <span className="text-[9px] font-semibold text-zinc-300">Edit Text</span>
         </button>
       )}

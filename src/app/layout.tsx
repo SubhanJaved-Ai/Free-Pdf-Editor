@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AetherPDF — World-Class Premium browser-based PDF Editor",
+  title: "VeltisPDF — World-Class Premium browser-based PDF Editor",
   description: "The ultimate next-generation client-first PDF workspace. Edit native text paragraphs, custom fonts, vector graphics, pages, shapes, and signatures with unmatched speed.",
   openGraph: {
-    title: "AetherPDF — World-Class Premium PDF Editor",
+    title: "VeltisPDF — World-Class Premium PDF Editor",
     description: "Futuristic client-first offline-first vector PDF editing engine.",
     type: "website",
     locale: "en_US",
