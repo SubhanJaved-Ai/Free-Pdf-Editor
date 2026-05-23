@@ -84,7 +84,7 @@ export default function ToolsHubPage() {
               {filteredTools.map((tool) => (
                 <Link 
                   key={tool.id} 
-                  href={`/editor?tool=${tool.id}`} 
+                  href={['merge-pdf', 'split-pdf', 'compress-pdf', 'jpg-to-pdf', 'pdf-to-jpg'].includes(tool.id) ? `/tools/${tool.id}` : `/editor?tool=${tool.id}`} 
                   className="bg-white p-8 rounded-2xl border border-outline-variant/40 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group flex flex-col h-full"
                 >
                   <div className="w-14 h-14 rounded-xl bg-surface-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300 mb-6">

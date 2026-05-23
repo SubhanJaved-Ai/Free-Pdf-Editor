@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@pdfsmaller/pdf-encrypt-lite": "^1.0.2",
     "framer-motion": "^12.39.0",
     "idb-keyval": "^6.2.4",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "pdf-lib": "^1.17.1",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/jszip": "^3.4.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

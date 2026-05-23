@@ -4,7 +4,7 @@ import { EditorElement, PageDimension } from '../store/useEditorStore';
 let pdfjsLib: any = null;
 
 // Dynamically load PDF.js client-side
-async function getPdfjsLib() {
+export async function getPdfjsLib() {
   if (pdfjsLib) return pdfjsLib;
   
   if (typeof window !== 'undefined') {
