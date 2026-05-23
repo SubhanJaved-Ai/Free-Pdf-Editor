@@ -204,17 +204,25 @@ export default function EditorPage() {
 
   // Perform compilation and download of edited document
   const handleExportPdf = async () => {
-    if (!pdfBytes || !pageDimensions.length) return;
+    // Fetch latest state directly to avoid stale closures due to React hydration errors
+    const currentState = useEditorStore.getState();
+    const currentPdfBytes = currentState.pdfBytes;
+    const currentElements = currentState.elements;
+    const currentPageDimensions = currentState.pageDimensions;
+    const currentPageOrders = currentState.pageOrders;
+    const currentFileName = currentState.fileName;
+    
+    if (!currentPdfBytes || !currentPageDimensions.length) return;
     
     setIsExporting(true);
     try {
       const completedBytes = await exportEditedPdf(
-        pdfBytes,
-        elements,
-        pageOrders,
-        pageDimensions,
+        currentPdfBytes,
+        currentElements,
+        currentPageOrders,
+        currentPageDimensions,
         {
-          fileName: fileName || 'edited-document.pdf',
+          fileName: currentFileName || 'edited-document.pdf',
           optimizeSize: true
         }
       );
@@ -222,7 +230,7 @@ export default function EditorPage() {
       const blob = new Blob([completedBytes as any], { type: 'application/pdf' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = fileName ? `aether_${fileName}` : 'aether_document.pdf';
+      link.download = currentFileName ? `aether_${currentFileName}` : 'aether_document.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
