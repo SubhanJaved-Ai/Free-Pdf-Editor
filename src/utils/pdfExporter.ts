@@ -3,10 +3,19 @@ import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import { EditorElement, PageDimension } from '../store/useEditorStore';
 import { renderShapeSvgContent } from './shapeDefinitions';
 
-// Convert hex color to PDF rgb object
-function hexToRgb(hex?: string) {
-  if (!hex) return rgb(0, 0, 0);
+// Convert hex color (or color object) to PDF rgb object
+function hexToRgb(colorInput?: any) {
+  if (!colorInput) return rgb(0, 0, 0);
   
+  let hex = '';
+  if (typeof colorInput === 'string') {
+    hex = colorInput;
+  } else if (typeof colorInput === 'object' && typeof colorInput.toHex === 'function') {
+    hex = colorInput.toHex();
+  } else {
+    return rgb(0, 0, 0); // safe default color
+  }
+
   // Strip # if present
   const cleanHex = hex.replace('#', '');
   const r = parseInt(cleanHex.substring(0, 2), 16) / 255;

@@ -396,7 +396,16 @@ export interface WatermarkOptions {
   scale?: number;
 }
 
-function hexToRgb(hex: string) {
+function hexToRgb(colorInput?: any) {
+  let hex = '';
+  if (typeof colorInput === 'string') {
+    hex = colorInput;
+  } else if (colorInput && typeof colorInput.toHex === 'function') {
+    hex = colorInput.toHex();
+  } else {
+    hex = '#000000';
+  }
+
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? {
     r: parseInt(result[1], 16) / 255,
