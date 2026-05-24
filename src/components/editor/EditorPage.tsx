@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useEditorStore, EditorElement } from '../../store/useEditorStore';
 import { FloatingToolbar } from './FloatingToolbar';
 import { renderShapeSvgContent } from '../../utils/shapeDefinitions';
@@ -10,9 +10,8 @@ interface EditorPageProps {
   pdfDoc: any; // PDF.js doc instance
 }
 
-export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pdfDoc }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const lastClickRef = useRef<{ id: string; time: number } | null>(null);
   
   const {
@@ -46,10 +45,12 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
   const [pageWidth, setPageWidth] = useState(595);
   const [pageHeight, setPageHeight] = useState(842);
   const [isRendered, setIsRendered] = useState(false);
+  const [debugLogs, setDebugLogs] = useState<any>({});
+
   
   // Pen Drawing State
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentDrawingPoints, setCurrentDrawingPoints] = useState<{ x: number; y: number }[]>([]);
+  const currentDrawingPointsRef = useRef<{ x: number; y: number }[]>([]);
   const [currentDrawingId, setCurrentDrawingId] = useState<string | null>(null);
   
   // Eraser Brush State
@@ -71,16 +72,22 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
   } | null>(null);
 
   // Snapping Guides state
-  const [snapLines, setSnapLines] = useState<{ x?: number; y?: number } | null>(null);
+  const [snapLines, setSnapLines] = useState<{ x?: number, y?: number } | null>(null);
+  
+  // To completely bypass mobile Safari transform scaling canvas bugs,
+  // we render the PDF to a hidden canvas and display it as an img tag
+  const [pdfImageSrc, setPdfImageSrc] = useState<string | null>(null);
+  const [pdfImageLoaded, setPdfImageLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   // Drag Performance Refs
   const dragRafRef = useRef<number | null>(null);
   const pendingDragUpdateRef = useRef<Partial<EditorElement> | null>(null);
 
-  // Filter elements for this page — include ALL elements, even deleted originals (for ghost anchors)
-  const pageElements = elements.filter(el => el.pageIndex === pageIndex && !el.isDeleted);
-  const deletedOriginals = elements.filter(el => el.pageIndex === pageIndex && el.isDeleted && el.isOriginalPdfElement);
-  const selectedElement = pageElements.find(el => selectedElementIds.includes(el.id));
+  // Filter elements for this page — memoized to avoid filtering on every render
+  const pageElements = useMemo(() => elements.filter(el => el.pageIndex === pageIndex && !el.isDeleted), [elements, pageIndex]);
+  const deletedOriginals = useMemo(() => elements.filter(el => el.pageIndex === pageIndex && el.isDeleted && el.isOriginalPdfElement), [elements, pageIndex]);
+  const selectedElement = useMemo(() => pageElements.find(el => selectedElementIds.includes(el.id)), [pageElements, selectedElementIds]);
 
   // Setup window event listeners for dragging, resizing, and rotation to prevent stickiness and freeze
   useEffect(() => {
@@ -319,60 +326,116 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
     };
   }, [dragState, pageElements, updateElement]);
 
-  // Render PDF page onto background canvas using PDF.js
+  // Render PDF page to an image to bypass mobile canvas compositing bugs
+  // On mobile Safari/Chrome, a raw <canvas> inside a CSS transform:scale() container
+  // frequently defers its initial paint, causing a blank white page until a touch-triggered
+  // reflow. By converting the render to a data URL and using an <img> tag, we bypass
+  // this compositing issue entirely.
   useEffect(() => {
     let renderTask: any = null;
     let isCancelled = false;
+    let blobUrl: string | null = null;
 
     async function renderPage() {
-      if (!pdfDoc || !canvasRef.current) return;
+      if (!pdfDoc) return;
       
       try {
         const page = await pdfDoc.getPage(pageIndex + 1);
         if (isCancelled) return;
         
-        // Render at fixed 2x retina quality on desktop, 1.25x on mobile to save memory
         const isMobile = window.innerWidth <= 768;
-        const renderScale = isMobile ? 1.25 : 2.0;
+        const renderScale = isMobile ? 1.5 : 2.0;
         const viewport = page.getViewport({ scale: renderScale });
         
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const context = canvas.getContext('2d');
+        // Create an offscreen canvas for rendering
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d', { alpha: false });
         if (!context) return;
         
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
         
-        // Sync page layout sizes in base points scale
+        renderTask = page.render({
+          canvasContext: context,
+          viewport: viewport
+        });
+        await renderTask.promise;
+        
+        if (isCancelled) return;
+        
+        // STEP 1: Get page dimensions FIRST (before any image work)
         const baseViewport = page.getViewport({ scale: 1.0 });
+        
+        // STEP 2: Set zoom BEFORE the image is displayed.
+        // CRITICAL: On mobile, the zoom change (1.0 → 0.40) changes the CSS
+        // transform: scale() on the image container. If the image is already
+        // in the DOM when this happens, mobile compositors invalidate and
+        // blank the compositing layer. Setting zoom first ensures the
+        // container is already at the final scale when the image arrives.
+        if (isMobile && baseViewport.width > 0) {
+          if (useEditorStore.getState().zoom === 1.0) {
+            useEditorStore.getState().setZoom(0.40);
+          }
+        }
+        
+        // STEP 3: Set page dimensions (also before image)
         setPageWidth(baseViewport.width);
         setPageHeight(baseViewport.height);
         
-        // Auto-fit for mobile widths
-        if (isMobile && baseViewport.width > 0) {
-          const containerWidth = window.innerWidth;
-          // Calculate zoom to fit screen width with a small margin (32px)
-          const fitZoom = (containerWidth - 32) / baseViewport.width;
-          // Set zoom only if it hasn't been explicitly changed, or just set it on initial load
-          useEditorStore.getState().setZoom(Math.min(1.0, fitZoom));
+        if (isCancelled) return;
+        
+        // STEP 4: Wait for React to re-render with the new zoom/dimensions
+        // so the container is at its final CSS transform scale BEFORE we add the image
+        await new Promise<void>(resolve => requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        }));
+        
+        if (isCancelled) return;
+        
+        // STEP 5: Convert canvas to image using Blob URL (much more reliable
+        // on mobile than data URLs — avoids base64 encoding overhead and
+        // uses the browser's native image decoder pipeline)
+        let imageUrl: string;
+        
+        if (isMobile && canvas.toBlob) {
+          // Use Blob URL on mobile — most reliable approach
+          const blob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.92);
+          });
+          
+          if (!blob || isCancelled) return;
+          blobUrl = URL.createObjectURL(blob);
+          imageUrl = blobUrl;
+        } else {
+          // Desktop: data URL is fine
+          imageUrl = canvas.toDataURL('image/png');
+        }
+        
+        // STEP 6: Pre-decode the image so it's ready to paint instantly
+        try {
+          const preloadImg = new Image();
+          preloadImg.src = imageUrl;
+          if (preloadImg.decode) {
+            await preloadImg.decode();
+          }
+        } catch (_) {
+          // decode() can fail on older browsers — fall through
         }
         
         if (isCancelled) return;
         
-        const renderContext = {
-          canvasContext: context,
-          viewport: viewport
-        };
+        // STEP 7: NOW set the image src — the container is already at final
+        // dimensions and zoom, so no compositing layer invalidation occurs
+        setPdfImageSrc(imageUrl);
+        setIsRendered(true);
         
-        renderTask = page.render(renderContext);
-        await renderTask.promise;
-        if (!isCancelled) {
-          setIsRendered(true);
-        }
+        // Free the offscreen canvas memory
+        canvas.width = 0;
+        canvas.height = 0;
+        
       } catch (err: any) {
         if (err?.name !== 'RenderingCancelledException') {
-          console.error('Error rendering PDF page canvas:', err);
+          console.error('Error rendering PDF page:', err);
         }
       }
     }
@@ -383,6 +446,10 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
       isCancelled = true;
       if (renderTask) {
         try { renderTask.cancel(); } catch (_) {}
+      }
+      // Revoke blob URL to free memory
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
       }
     };
   }, [pdfDoc, pageIndex]);
@@ -542,7 +609,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
     
     setIsDrawing(true);
     const newPoints = [{ x: ptX, y: ptY }];
-    setCurrentDrawingPoints(newPoints);
+    currentDrawingPointsRef.current = newPoints;
     
     let drawWidth = strokeWidth;
     let drawOpacity = drawingOpacity;
@@ -596,11 +663,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
       const ptX = ((e.clientX - rect.left) / rect.width) * 100;
       const ptY = ((e.clientY - rect.top) / rect.height) * 100;
       
-      const newPoints = [...currentDrawingPoints, { x: ptX, y: ptY }];
-      setCurrentDrawingPoints(newPoints);
+      // Use ref-based points to avoid state-driven rerenders on every pointermove
+      currentDrawingPointsRef.current = [...currentDrawingPointsRef.current, { x: ptX, y: ptY }];
       
       updateElement(currentDrawingId, {
-        points: newPoints
+        points: currentDrawingPointsRef.current
       });
     }
   };
@@ -679,16 +746,59 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
         className="relative mx-auto"
       >
         <div 
-          className="absolute top-0 left-0 shadow-2xl bg-white border border-black/10 overflow-visible touch-none"
+          className={`absolute top-0 left-0 shadow-2xl bg-white border border-black/10 overflow-visible ${
+            (activeTool === 'draw' || activeTool === 'erase') ? 'touch-none' : ''
+          }`}
           style={{ 
             width: `${pageWidth}px`, 
             height: `${pageHeight}px`, 
             transform: `scale(${zoom})`,
-            transformOrigin: 'top left'
+            transformOrigin: 'top left',
+            willChange: 'transform',
+            WebkitBackfaceVisibility: 'hidden' as any,
           }}
         >
-        {/* PDF Page background canvas */}
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full select-none pointer-events-none z-0" />
+        {/* PDF Image Layer — rendered from offscreen canvas to bypass mobile compositing bugs */}
+        {pdfImageSrc && (
+          <img 
+            ref={imgRef}
+            src={pdfImageSrc} 
+            alt="PDF page" 
+            className="absolute inset-0 w-full h-full z-0 pointer-events-none select-none" 
+            style={{ 
+              objectFit: 'fill',
+              // Force GPU compositing on mobile to prevent deferred paint
+              willChange: 'transform',
+              WebkitBackfaceVisibility: 'hidden' as any,
+            }}
+            draggable={false}
+            onLoad={() => {
+              setPdfImageLoaded(true);
+              // CRITICAL: Force mobile browser to repaint the compositing layer
+              // Mobile Safari/Chrome defer painting of images inside CSS transform containers
+              // This requestAnimationFrame + forced reflow pattern ensures the content
+              // is actually composited and visible immediately, not deferred until a touch event
+              requestAnimationFrame(() => {
+                if (imgRef.current) {
+                  // Force a layout reflow by reading a layout property
+                  void imgRef.current.offsetHeight;
+                  // Then force the parent to also reflow
+                  const parent = imgRef.current.parentElement;
+                  if (parent) {
+                    void parent.offsetHeight;
+                  }
+                }
+                // Double-RAF to catch the next frame after compositor processes the reflow
+                requestAnimationFrame(() => {
+                  if (imgRef.current) {
+                    // Toggle a trivial CSS property to force the compositor to repaint
+                    imgRef.current.style.transform = 'translateZ(0)';
+                  }
+                });
+              });
+            }}
+          />
+        )}
         
         {/* Snappy alignment visual grids */}
         {snapLines?.x && (
@@ -1078,5 +1188,6 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
     </div>
     </div>
   );
-};
+});
+EditorPage.displayName = 'EditorPage';
 export default EditorPage;

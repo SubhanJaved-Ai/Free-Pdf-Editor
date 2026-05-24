@@ -2,14 +2,14 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useEditorStore } from '../../store/useEditorStore';
-import { Plus, Trash2, Copy, FileCode, Layers, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Plus, Trash2, Copy, FileCode, Layers, ArrowUp, ArrowDown, X, ArrowLeft } from 'lucide-react';
 
 interface PageThumbnailProps {
   pdfDoc: any;
   pageIdx: number;
 }
 
-const PageThumbnail: React.FC<PageThumbnailProps> = ({ pdfDoc, pageIdx }) => {
+const PageThumbnail: React.FC<PageThumbnailProps> = React.memo(({ pdfDoc, pageIdx }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ const PageThumbnail: React.FC<PageThumbnailProps> = ({ pdfDoc, pageIdx }) => {
       className="max-w-full max-h-full object-contain select-none pointer-events-none"
     />
   );
-};
+});
 
 interface SidebarLeftProps {
   pdfDoc: any;
@@ -126,23 +126,29 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
 
   return (
     <aside 
-      className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'h-full flex-shrink-0' : 'h-[calc(100vh-4rem)]'} bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col z-30 select-none max-w-full`}
+      className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'h-full flex-shrink-0 pt-12 md:pt-0' : 'h-[calc(100vh-4rem)] pt-12 md:pt-0'} bg-surface-container-lowest border-r border-outline-variant/30 flex flex-col z-30 select-none max-w-full`}
       style={{ width: `${leftSidebarWidth}px` }}
     >
       {/* Title */}
       <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-on-surface">
-          <Layers size={14} className="text-primary" />
-          <span className="text-xs font-bold uppercase tracking-wider">Pages Navigator</span>
-        </div>
+        {isMobileOpen ? (
+          <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all">
+            <ArrowLeft size={16} /> Back
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 text-on-surface">
+            <Layers size={14} className="text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wider">Pages Navigator</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-[10px] px-2 py-0.5 rounded bg-surface-container border border-outline-variant/30 text-on-surface-variant font-bold">
             {pageOrders.length} {pageOrders.length === 1 ? 'Page' : 'Pages'}
           </span>
           {isMobileOpen && (
-            <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden p-1 rounded hover:bg-surface-variant">
-              <X size={14} />
-            </button>
+            <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider">
+              Pages
+            </div>
           )}
         </div>
       </div>

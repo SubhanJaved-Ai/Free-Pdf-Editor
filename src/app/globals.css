@@ -173,3 +173,48 @@ input[type=number] {
   z-index: 50;
   pointer-events: none;
 }
+
+/* Mobile Performance Optimizations */
+@media (max-width: 768px) {
+  /* Eliminate 300ms tap delay on all interactive elements */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Optimize touch scrolling for canvas area */
+  .canvas-grid-bg {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Reduce animation overhead on mobile */
+  .bento-card {
+    transition: none;
+  }
+  .bento-card:hover {
+    transform: none;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* Hardware-accelerated element rendering */
+.editor-element-gpu {
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Canvas grid background — optimized with CSS instead of JS */
+.canvas-grid-bg {
+  background-color: #f8f9fa;
+  background-image: 
+    radial-gradient(circle, #e0e0e0 0.5px, transparent 0.5px);
+  background-size: 20px 20px;
+}

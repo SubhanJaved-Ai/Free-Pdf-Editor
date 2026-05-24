@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useEditorStore } from '../../store/useEditorStore';
 import { EditorPage } from './EditorPage';
 import { Sparkles, Maximize2, Move, ZoomIn, ZoomOut, Lock, Unlock, GripHorizontal, Settings2 } from 'lucide-react';
@@ -132,6 +132,8 @@ const DraggableZoomWidget = () => {
   );
 };
 
+const MemoizedZoomWidget = React.memo(DraggableZoomWidget);
+
 interface CanvasProps {
   pdfDoc: any; // PDF.js doc instance
 }
@@ -163,6 +165,9 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+
+  // Memoize mobile detection to avoid recalculating in render loop
+  const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth <= 768, []);
 
   // Setup Keyboard Shortcuts (Figma/Adobe Standard)
   useEffect(() => {
@@ -268,7 +273,7 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
     };
   }, [selectedElementIds, deleteElement, undo, redo, setZoom, isSpacePressed, setActiveTool, pageDimensions]);
 
-  // Ctrl+Mousewheel zoom (native listener for passive:false to preventDefault browser zoom)
+  // Ctrl+Mousewheel zoom and Touch Pinch zoom
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -281,12 +286,81 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
       }
     };
 
+    let initialDist = 0;
+    let initialZoom = 1;
+    let initialScrollX = 0;
+    let initialScrollY = 0;
+    let pinchCenterX = 0;
+    let pinchCenterY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        initialDist = Math.sqrt(dx * dx + dy * dy);
+        initialZoom = useEditorStore.getState().zoom;
+        
+        // Calculate the center point of the pinch relative to the container's top-left
+        const rect = container.getBoundingClientRect();
+        const clientX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const clientY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        
+        pinchCenterX = clientX - rect.left;
+        pinchCenterY = clientY - rect.top;
+        
+        initialScrollX = container.scrollLeft;
+        initialScrollY = container.scrollTop;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault(); // Prevent native browser UI zoom
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (initialDist > 0) {
+          const scale = dist / initialDist;
+          const newZoom = Math.min(Math.max(initialZoom * scale, 0.25), 4.0);
+          
+          if (newZoom !== useEditorStore.getState().zoom) {
+            setZoom(newZoom);
+            
+            const zoomRatio = newZoom / initialZoom;
+            const newScrollX = (initialScrollX + pinchCenterX) * zoomRatio - pinchCenterX;
+            const newScrollY = (initialScrollY + pinchCenterY) * zoomRatio - pinchCenterY;
+            
+            // Wait for React to re-render and DOM to resize before applying scroll
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                if (containerRef.current) {
+                  containerRef.current.scrollLeft = newScrollX;
+                  containerRef.current.scrollTop = newScrollY;
+                }
+              });
+            });
+          }
+        }
+      }
+    };
+
     container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+    };
   }, [setZoom]);
 
   // Handle Spacebar or Pan tool panning interactions
   const handlePointerDown = (e: React.PointerEvent) => {
+    // Disable custom JS panning for touch events to let mobile browsers handle native scrolling naturally
+    if (e.pointerType === 'touch') return;
+
     if (isSpacePressed || activeTool === 'pan' || (activeTool === 'select' && e.button === 1)) {
       setIsPanning(true);
       if (containerRef.current) {
@@ -403,7 +477,9 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
     <div 
       ref={containerRef}
       onPointerDown={handlePointerDown}
-      className={`flex-1 h-[calc(100vh-4rem)] overflow-auto canvas-grid-bg relative flex flex-col items-center focus:outline-none touch-none ${
+      className={`flex-1 h-[calc(100vh-4rem)] overflow-auto canvas-grid-bg relative flex flex-col items-center focus:outline-none ${
+        (activeTool === 'draw' || activeTool === 'erase' || activeTool === 'signature') ? 'touch-none' : ''
+      } ${
         isPanning ? 'cursor-grabbing' : (isSpacePressed || activeTool === 'pan') ? 'cursor-grab' : 'cursor-default'
       }`}
       tabIndex={0}
@@ -415,24 +491,40 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
         ref={pagesStackRef}
         className="py-12 flex flex-col items-center gap-8 relative"
       >
-        {pageOrders.map((pageIdx, visualIdx) => (
-          <div 
-            key={`${pageIdx}-${visualIdx}`}
-            className={`transition-colors duration-200 border-2 rounded-lg ${
-              currentPageIndex === pageIdx ? 'border-veltis-indigo/60 shadow-2xl shadow-veltis-indigo/5' : 'border-transparent'
-            }`}
-            onClick={() => setCurrentPageIndex(pageIdx)}
-          >
-            <EditorPage 
-              pageIndex={pageIdx} 
-              pdfDoc={pdfDoc} 
-            />
-          </div>
-        ))}
+        {pageOrders.map((pageIdx, visualIdx) => {
+          const isActivePage = currentPageIndex === pageIdx;
+          // To prevent massive Out-of-Memory crashes on mobile Safari, we ONLY render the active page's heavy canvas
+          // For inactive pages on mobile, we just render a placeholder box
+          const shouldRenderPage = !isMobile || isActivePage;
+
+          return (
+            <div 
+              key={`${pageIdx}-${visualIdx}`}
+              className={`transition-colors duration-200 border-2 rounded-lg ${
+                isActivePage ? 'border-veltis-indigo/60 shadow-2xl shadow-veltis-indigo/5' : 'border-transparent'
+              }`}
+              onClick={() => setCurrentPageIndex(pageIdx)}
+            >
+              {shouldRenderPage ? (
+                <EditorPage 
+                  pageIndex={pageIdx} 
+                  pdfDoc={pdfDoc} 
+                />
+              ) : (
+                <div 
+                  className="bg-white/50 flex items-center justify-center text-outline-variant font-bold text-sm"
+                  style={{ width: '100%', minHeight: '600px', minWidth: '400px' }}
+                >
+                  Page {pageIdx + 1} (Tap to load)
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Floating Zoom Widget */}
-      <DraggableZoomWidget />
+      <MemoizedZoomWidget />
     </div>
   );
 };

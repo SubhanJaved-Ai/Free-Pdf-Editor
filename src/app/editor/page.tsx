@@ -35,11 +35,7 @@ export default function EditorPage() {
     pdfUrl,
     pdfBytes,
     fileName,
-    elements,
-    pageOrders,
-    pageDimensions,
     setPdf,
-    signatures,
     addSignature,
     layoutMode,
     leftSidebarWidth,
@@ -146,7 +142,7 @@ export default function EditorPage() {
           
           // Hydrate layout elements if store list is empty!
           const state = useEditorStore.getState();
-          if (state.elements.length === 0) {
+          if (state.elements.length === 0 && state.pageDimensions.length === 0) {
             const parsed = await parsePdfLayout(doc);
             useEditorStore.setState({ 
               elements: parsed.elements,

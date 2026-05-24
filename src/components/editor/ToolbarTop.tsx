@@ -410,8 +410,26 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
       </div>
     </header>
 
-    {/* Main Drawing/Editing Tools - Floating just below header on mobile, top centered on desktop */}
-    <nav className="fixed top-[72px] left-2 right-2 w-auto rounded-2xl md:top-3 md:left-1/2 md:-translate-x-1/2 flex items-center justify-around md:justify-center md:gap-1 bg-surface-container-highest md:bg-surface-container-high border md:border border-outline-variant/30 p-2 md:p-1 shadow-2xl shadow-black/20 md:shadow-sm z-[100]">
+    {/* Main Drawing/Editing Tools - Floating bottom on mobile, top centered on desktop */}
+    <nav className="fixed bottom-4 left-2 right-2 w-auto rounded-2xl md:bottom-auto md:top-3 md:left-1/2 md:-translate-x-1/2 flex items-center justify-around md:justify-center md:gap-1 bg-surface-container-highest md:bg-surface-container-high border md:border border-outline-variant/30 p-2 md:p-1 shadow-2xl shadow-black/20 md:shadow-sm z-[40] md:z-[100]">
+      {/* Mobile Back Button — returns to Select tool without browser back */}
+      {activeTool !== 'select' && (
+        <button
+          onClick={() => {
+            setActiveTool('select');
+            setIsSignatureOpen(false);
+          }}
+          title="Back to Select"
+          className="p-2.5 md:p-2 flex-shrink-0 rounded-lg transition duration-150 relative group flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container-highest md:border-r md:border-outline-variant/30 md:pr-2 md:mr-1"
+        >
+          <ArrowLeft size={20} className="md:w-4 md:h-4" />
+          {/* Premium Tooltip */}
+          <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 md:bottom-auto md:-bottom-9 md:top-auto px-2.5 py-1.5 rounded-md bg-on-surface text-surface text-[10px] md:text-[9px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">
+            Back
+          </div>
+        </button>
+      )}
+
       {/* Undo/Redo Group inside central nav */}
       <div className="flex items-center gap-1 border-r border-outline-variant/30 pr-1 mr-1 hidden md:flex">
         <button
@@ -461,12 +479,21 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
               </button>
               
               {isSignatureOpen && (
-                <div className="fixed bottom-0 left-0 w-full rounded-t-2xl md:absolute md:bottom-auto md:top-[calc(100%+12px)] md:left-1/2 md:-translate-x-1/2 md:w-[360px] md:rounded-xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl border border-outline-variant/50 p-4 pb-8 md:pb-4 z-[150] flex flex-col gap-3 max-h-[60vh] md:max-h-[70vh] overflow-y-auto">
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm font-bold text-on-surface">Create Signature</h4>
+                <div className="fixed inset-0 w-full h-full md:h-auto md:absolute md:inset-auto md:bottom-auto md:top-[calc(100%+12px)] md:left-1/2 md:-translate-x-1/2 md:w-[360px] md:rounded-xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl border border-outline-variant/50 p-4 pb-8 md:pb-4 z-[150] flex flex-col gap-3 overflow-y-auto pt-10 md:pt-4 md:max-h-[70vh]">
+                  <div className="flex items-center justify-between pb-3 md:pb-0 border-b border-outline-variant/30 md:border-none mb-1 md:mb-0">
                     <button 
                       onClick={() => setIsSignatureOpen(false)}
-                      className="text-on-surface-variant hover:text-on-surface text-lg leading-none"
+                      className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all"
+                    >
+                      <ArrowLeft size={16} /> Back
+                    </button>
+                    <h4 className="text-sm font-bold text-on-surface hidden md:block">Create Signature</h4>
+                    <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider">
+                      Signature
+                    </div>
+                    <button 
+                      onClick={() => setIsSignatureOpen(false)}
+                      className="hidden md:block text-on-surface-variant hover:text-on-surface text-lg leading-none"
                     >×</button>
                   </div>
                   
@@ -509,7 +536,7 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
                       </div>
                       
                       {/* Font Grid */}
-                      <div className="grid grid-cols-3 gap-1 max-h-40 md:max-h-48 overflow-y-auto pr-1">
+                      <div className="grid grid-cols-3 gap-1 flex-1 min-h-[200px] md:max-h-48 overflow-y-auto pr-1">
                         {signatureFonts.map(font => (
                           <button
                             key={font.name}

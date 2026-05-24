@@ -45,7 +45,7 @@ async function performSave(): Promise<boolean> {
   notifyListeners();
 
   const saveData: AutoSaveData = {
-    pdfBytes: state.pdfBytes,
+    pdfBytes: new Uint8Array(), // TEMP FIX: Disabled pdfBytes saving to prevent IndexedDB serialization OOM crash on iOS!
     fileName: state.fileName,
     elements: state.elements,
     zoom: state.zoom,
@@ -77,9 +77,8 @@ export async function manualSave(): Promise<boolean> {
 }
 
 export function useAutoSave() {
-  const { pdfBytes, elements } = useEditorStore();
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevElementsLenRef = useRef(elements.length);
+  const prevElementsLenRef = useRef(0);
 
   // Periodic auto-save every 30s
   useEffect(() => {
@@ -90,31 +89,42 @@ export function useAutoSave() {
     return () => clearInterval(interval);
   }, []);
 
-  // Edit-triggered debounced save — fires when elements array changes
+  // Edit-triggered debounced save — uses Zustand subscribe to avoid
+  // rerendering the entire editor page tree on every element change
   useEffect(() => {
-    if (!pdfBytes || pdfBytes.length === 0) return;
-    
-    // Skip the initial mount
-    if (prevElementsLenRef.current === 0 && elements.length > 0) {
-      prevElementsLenRef.current = elements.length;
-      return;
-    }
-    prevElementsLenRef.current = elements.length;
+    const unsubscribe = useEditorStore.subscribe(
+      (state) => {
+        const { pdfBytes, elements } = state;
+        if (!pdfBytes || pdfBytes.length === 0) return;
+        
+        // Skip the initial hydration
+        if (prevElementsLenRef.current === 0 && elements.length > 0) {
+          prevElementsLenRef.current = elements.length;
+          return;
+        }
+        
+        // Only trigger save when element count changes (add/delete),
+        // not during drag/resize moves (which are high-frequency updates)
+        if (elements.length === prevElementsLenRef.current) return;
+        prevElementsLenRef.current = elements.length;
 
-    // Debounce — save 2s after the last change
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      performSave();
-    }, DEBOUNCE_DELAY);
+        // Debounce — save 2s after the last structural change
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+        debounceTimerRef.current = setTimeout(() => {
+          performSave();
+        }, DEBOUNCE_DELAY);
+      }
+    );
 
     return () => {
+      unsubscribe();
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [elements, pdfBytes]);
+  }, []);
 
   return null;
 }

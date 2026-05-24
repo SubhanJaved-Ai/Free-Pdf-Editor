@@ -23,7 +23,8 @@ import {
   Image as ImageIcon,
   Square,
   Pencil,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
 
 const AdvancedColorPicker = ({ value, onChange, presets, allowTransparent = false }: { value: string, onChange: (c: string) => void, presets: string[], allowTransparent?: boolean }) => {
@@ -171,18 +172,24 @@ export const SidebarRight: React.FC = () => {
   if (!selectedElement) {
     return (
       <aside 
-        className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'flex-1 h-full flex flex-col min-w-0 p-4 border-l' : 'h-[calc(100vh-4rem)] bg-surface-container-lowest border-l p-4'} border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full`}
+        className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'flex-1 h-full flex flex-col min-w-0 p-4 pt-12 md:pt-4 border-l' : 'h-[calc(100vh-4rem)] bg-surface-container-lowest border-l p-4 pt-12 md:pt-4'} border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full`}
         style={asideStyle}
       >
         <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4 flex-shrink-0">
-          <div className="flex items-center gap-2 text-on-surface">
-            <Settings size={14} className="text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider">Workspace Defaults</span>
-          </div>
-          {isMobileOpen && (
-            <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden p-1 rounded hover:bg-surface-variant">
-              <X size={14} />
+          {isMobileOpen ? (
+            <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all">
+              <ArrowLeft size={16} /> Back
             </button>
+          ) : (
+            <div className="flex items-center gap-2 text-on-surface">
+              <Settings size={14} className="text-primary" />
+              <span className="text-xs font-bold uppercase tracking-wider">Workspace Defaults</span>
+            </div>
+          )}
+          {isMobileOpen && (
+            <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider">
+              Defaults
+            </div>
           )}
         </div>
 
@@ -267,23 +274,29 @@ export const SidebarRight: React.FC = () => {
   // Element Specific Properties Inspector
   return (
     <aside 
-      className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'flex-1 h-full flex flex-col min-w-0 p-4 border-l' : 'h-[calc(100vh-4rem)] bg-surface-container-lowest border-l p-4'} border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full`}
+      className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'flex-1 h-full flex flex-col min-w-0 p-4 pt-12 md:pt-4 border-l' : 'h-[calc(100vh-4rem)] bg-surface-container-lowest border-l p-4 pt-12 md:pt-4'} border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full`}
       style={asideStyle}
     >
       <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4 flex-shrink-0">
-        <div className="flex items-center gap-2 text-on-surface">
-          <Sliders size={14} className="text-primary" />
-          <span className="text-xs font-bold uppercase tracking-wider">Properties</span>
-        </div>
+        {isMobileOpen ? (
+          <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all">
+            <ArrowLeft size={16} /> Back
+          </button>
+        ) : (
+          <div className="flex items-center gap-2 text-on-surface">
+            <Sliders size={14} className="text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wider">Properties</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {isMobileOpen && (
-            <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden p-1 rounded hover:bg-surface-variant text-on-surface">
-              <X size={14} />
-            </button>
+            <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider mr-2">
+              Properties
+            </div>
           )}
           <button
             onClick={() => deleteElement(selectedElement.id)}
-            className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-surface-container transition"
+            className="p-1.5 rounded bg-surface-container text-on-surface-variant hover:text-error hover:bg-error/10 transition"
             title="Delete Element"
           >
             <Trash2 size={13} />
