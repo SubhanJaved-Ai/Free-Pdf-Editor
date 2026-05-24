@@ -86,7 +86,7 @@ export default function ToolsHubPage() {
                 {filteredTools.map((tool) => (
                   <Link 
                     key={tool.id} 
-                    href={['merge-pdf', 'split-pdf', 'compress-pdf', 'jpg-to-pdf', 'pdf-to-jpg'].includes(tool.id) ? `/tools/${tool.id}` : `/editor?tool=${tool.id}`} 
+                    href={['edit-pdf', 'sign-pdf'].includes(tool.id) ? `/editor` : `/tools/${tool.id}`} 
                     className="bento-card bg-surface p-5 rounded-xl border border-outline-variant/40 flex items-center gap-4 group"
                   >
                     <div className="w-12 h-12 shrink-0 rounded-lg bg-surface-variant/50 flex items-center justify-center text-on-surface-variant group-hover:bg-primary/10 group-hover:text-primary transition-colors">

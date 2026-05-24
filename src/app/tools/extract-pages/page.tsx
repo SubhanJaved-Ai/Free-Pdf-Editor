@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { extractPages } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Copy, X } from 'lucide-react';
 
 export default function ExtractPagesPage() {
@@ -55,7 +55,7 @@ export default function ExtractPagesPage() {
     setIsProcessing(true);
     setErrorMsg(null);
     try {
-      const resultBytes = await extractPages(file, ranges);
+      const resultBytes = await (await import('../../../utils/pdf-tools')).extractPages(file, ranges);
       const blob = new Blob([resultBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

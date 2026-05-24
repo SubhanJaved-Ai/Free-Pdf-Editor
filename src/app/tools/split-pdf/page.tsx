@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { splitPdf } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Scissors, X } from 'lucide-react';
 
 export default function SplitPdfPage() {
@@ -49,7 +49,7 @@ export default function SplitPdfPage() {
     setIsSplitting(true);
     try {
       const actualRanges = splitMode === 'every' ? '' : ranges;
-      const zipBlob = await splitPdf(file, actualRanges);
+      const zipBlob = await (await import('../../../utils/pdf-tools')).splitPdf(file, actualRanges);
       const url = URL.createObjectURL(zipBlob);
       setResultUrl(url);
     } catch (error) {

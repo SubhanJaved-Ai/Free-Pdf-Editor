@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { addWatermark, WatermarkOptions } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, X, Image as ImageIcon, Type, Droplets } from 'lucide-react';
 
 export default function AddWatermarkPage() {
@@ -74,7 +74,7 @@ export default function AddWatermarkPage() {
     
     setIsProcessing(true);
     try {
-      const options: WatermarkOptions = {
+      const options = {
         type: watermarkType,
         text: watermarkType === 'text' ? textValue : undefined,
         imageFile: watermarkType === 'image' && imageFile ? imageFile : undefined,
@@ -86,7 +86,7 @@ export default function AddWatermarkPage() {
         position
       };
       
-      const pdfBytes = await addWatermark(file, options);
+      const pdfBytes = await (await import('../../../utils/pdf-tools')).addWatermark(file, options);
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

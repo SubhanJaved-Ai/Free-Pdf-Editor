@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { pdfToImages } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Image as ImageIcon, X } from 'lucide-react';
 
 export default function PdfToJpgPage() {
@@ -48,7 +48,7 @@ export default function PdfToJpgPage() {
     setIsConverting(true);
     try {
       const qValue = quality === 'high' ? 1.0 : quality === 'medium' ? 0.7 : 0.4;
-      const zipBlob = await pdfToImages(file, qValue);
+      const zipBlob = await (await import('../../../utils/pdf-tools')).pdfToImages(file, qValue);
       const url = URL.createObjectURL(zipBlob);
       setResultUrl(url);
     } catch (error) {

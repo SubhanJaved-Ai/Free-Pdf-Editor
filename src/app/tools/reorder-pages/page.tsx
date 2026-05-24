@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { reorderPages, generatePdfThumbnails } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, X, Move, Copy, Trash2 } from 'lucide-react';
 
 interface PageItem {
@@ -54,15 +54,17 @@ export default function ReorderPagesPage() {
 
   useEffect(() => {
     if (file) {
-      generatePdfThumbnails(file).then(thumbs => {
-        setThumbnails(thumbs);
-        // Initialize order
-        const initialOrder = thumbs.map((_, index) => ({
-          id: `page-${index}-${Date.now()}`,
-          originalIndex: index
-        }));
-        setPagesOrder(initialOrder);
-      }).catch(err => console.error("Failed to generate thumbnails", err));
+      import('../../../utils/pdf-tools').then(module => {
+        module.generatePdfThumbnails(file).then(thumbs => {
+          setThumbnails(thumbs);
+          // Initialize order
+          const initialOrder = thumbs.map((_, index) => ({
+            id: `page-${index}-${Date.now()}`,
+            originalIndex: index
+          }));
+          setPagesOrder(initialOrder);
+        }).catch(err => console.error("Failed to generate thumbnails", err));
+      });
     } else {
       setThumbnails([]);
       setPagesOrder([]);
@@ -134,7 +136,7 @@ export default function ReorderPagesPage() {
     setIsProcessing(true);
     try {
       const indices = pagesOrder.map(item => item.originalIndex);
-      const pdfBytes = await reorderPages(file, indices);
+      const pdfBytes = await (await import('../../../utils/pdf-tools')).reorderPages(file, indices);
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

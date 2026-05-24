@@ -311,11 +311,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
       }));
     };
 
-    window.addEventListener('mousemove', handleWindowMouseMove);
-    window.addEventListener('mouseup', handleWindowMouseUp);
+    window.addEventListener('pointermove', handleWindowMouseMove);
+    window.addEventListener('pointerup', handleWindowMouseUp);
     return () => {
-      window.removeEventListener('mousemove', handleWindowMouseMove);
-      window.removeEventListener('mouseup', handleWindowMouseUp);
+      window.removeEventListener('pointermove', handleWindowMouseMove);
+      window.removeEventListener('pointerup', handleWindowMouseUp);
     };
   }, [dragState, pageElements, updateElement]);
 
@@ -331,8 +331,9 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
         const page = await pdfDoc.getPage(pageIndex + 1);
         if (isCancelled) return;
         
-        // Render at fixed 2x retina quality - CSS zoom handles visual scaling
-        const renderScale = 2.0;
+        // Render at fixed 2x retina quality on desktop, 1.25x on mobile to save memory
+        const isMobile = window.innerWidth <= 768;
+        const renderScale = isMobile ? 1.25 : 2.0;
         const viewport = page.getViewport({ scale: renderScale });
         
         const canvas = canvasRef.current;
@@ -347,6 +348,15 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
         const baseViewport = page.getViewport({ scale: 1.0 });
         setPageWidth(baseViewport.width);
         setPageHeight(baseViewport.height);
+        
+        // Auto-fit for mobile widths
+        if (isMobile && baseViewport.width > 0) {
+          const containerWidth = window.innerWidth;
+          // Calculate zoom to fit screen width with a small margin (32px)
+          const fitZoom = (containerWidth - 32) / baseViewport.width;
+          // Set zoom only if it hasn't been explicitly changed, or just set it on initial load
+          useEditorStore.getState().setZoom(Math.min(1.0, fitZoom));
+        }
         
         if (isCancelled) return;
         
@@ -382,7 +392,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
     // Dismiss context menu on any click
     if (contextMenu) setContextMenu(null);
     
-    if (activeTool === 'select') {
+    if (activeTool === 'select' || activeTool === 'pan') {
       setSelectedElementIds([]);
       setActiveElementId(null);
       return;
@@ -521,7 +531,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
   };
 
   // Pen tool freehand drawing handlers + Eraser brush drag
-  const handlePageMouseDown = (e: React.MouseEvent) => {
+  const handlePagePointerDown = (e: React.PointerEvent) => {
     if (!containerRef.current) return;
     
     if (activeTool !== 'draw' && activeTool !== 'erase') return;
@@ -578,7 +588,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
     setCurrentDrawingId(newId);
   };
 
-  const handlePageMouseMove = (e: React.MouseEvent) => {
+  const handlePagePointerMove = (e: React.PointerEvent) => {
 
     
     if (isDrawing && currentDrawingId && containerRef.current) {
@@ -595,7 +605,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
     }
   };
 
-  const handlePageMouseUp = () => {
+  const handlePagePointerUp = () => {
     if (isDrawing) {
       setIsDrawing(false);
       setCurrentDrawingId(null);
@@ -606,9 +616,9 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
   };
 
   // Element interaction selectors
-  const handleElementMouseDown = (e: React.MouseEvent, elId: string, action: 'drag' | 'resize' | 'rotate', handle?: string) => {
-    if (activeTool === 'erase' || activeTool === 'draw') {
-      // Let it bubble to page for drawing/erasing over elements
+  const handleElementPointerDown = (e: React.PointerEvent, elId: string, action: 'drag' | 'resize' | 'rotate', handle?: string) => {
+    if (activeTool === 'erase' || activeTool === 'draw' || activeTool === 'pan') {
+      // Let it bubble to page for panning/drawing/erasing over elements
       return;
     }
     e.stopPropagation();
@@ -665,9 +675,18 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
       className="relative flex justify-center py-6"
     >
       <div 
-        className="relative shadow-2xl bg-white border border-black/10 overflow-visible"
-        style={{ width: `${pageWidth}px`, height: `${pageHeight}px`, zoom: zoom }}
+        style={{ width: `${pageWidth * zoom}px`, height: `${pageHeight * zoom}px` }} 
+        className="relative mx-auto"
       >
+        <div 
+          className="absolute top-0 left-0 shadow-2xl bg-white border border-black/10 overflow-visible touch-none"
+          style={{ 
+            width: `${pageWidth}px`, 
+            height: `${pageHeight}px`, 
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top left'
+          }}
+        >
         {/* PDF Page background canvas */}
         <canvas ref={canvasRef} className="absolute inset-0 w-full h-full select-none pointer-events-none z-0" />
         
@@ -683,11 +702,11 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
         <div
           ref={containerRef}
           onClick={handlePageClick}
-          onMouseDown={handlePageMouseDown}
-          onMouseMove={handlePageMouseMove}
-          onMouseUp={handlePageMouseUp}
+          onPointerDown={handlePagePointerDown}
+          onPointerMove={handlePagePointerMove}
+          onPointerUp={handlePagePointerUp}
           className={`absolute inset-0 z-10 pointer-events-auto ${
-            activeTool === 'select' ? 'cursor-default' : activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-cell' : 'cursor-cell'
+            activeTool === 'select' ? 'cursor-default' : activeTool === 'draw' ? 'cursor-crosshair' : activeTool === 'erase' ? 'cursor-cell' : activeTool === 'pan' ? 'cursor-grab' : 'cursor-cell'
           }`}
         >
           {pageElements.map((el) => {
@@ -714,7 +733,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
                 id={`el-${el.id}`}
                 key={el.id}
                 style={elementStyle}
-                onMouseDown={(e) => handleElementMouseDown(e, el.id, 'drag')}
+                onPointerDown={(e) => handleElementPointerDown(e, el.id, 'drag')}
                 onClick={(e) => e.stopPropagation()}
                 onContextMenu={(e) => {
                   if (el.isOriginalPdfElement) {
@@ -750,7 +769,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
                     {isEditing && (
                       <div 
                         className="absolute -top-8 right-0 flex items-center z-[100] pointer-events-auto"
-                        onMouseDown={(e) => {
+                        onPointerDown={(e) => {
                           e.preventDefault(); // Prevent blur
                           e.stopPropagation();
                           const elNode = document.getElementById(`text-edit-${el.id}`);
@@ -923,43 +942,43 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
                   <>
                     {/* Corners Resize Handles */}
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 'tl')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 'tl')}
                       className="absolute -top-1.5 -left-1.5 resize-handle cursor-nwse-resize pointer-events-auto" 
                     />
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 'tr')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 'tr')}
                       className="absolute -top-1.5 -right-1.5 resize-handle cursor-nesw-resize pointer-events-auto" 
                     />
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 'bl')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 'bl')}
                       className="absolute -bottom-1.5 -left-1.5 resize-handle cursor-nesw-resize pointer-events-auto" 
                     />
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 'br')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 'br')}
                       className="absolute -bottom-1.5 -right-1.5 resize-handle cursor-nwse-resize pointer-events-auto" 
                     />
                     
                     {/* Sides Resize Handles */}
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 't')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 't')}
                       className="absolute -top-1.5 left-1/2 -translate-x-1/2 resize-handle cursor-ns-resize pointer-events-auto" 
                     />
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 'b')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 'b')}
                       className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 resize-handle cursor-ns-resize pointer-events-auto" 
                     />
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 'l')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 'l')}
                       className="absolute top-1/2 -translate-y-1/2 -left-1.5 resize-handle cursor-ew-resize pointer-events-auto" 
                     />
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'resize', 'r')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'resize', 'r')}
                       className="absolute top-1/2 -translate-y-1/2 -right-1.5 resize-handle cursor-ew-resize pointer-events-auto" 
                     />
                     
                     {/* Rotation Lollipop Handle */}
                     <div 
-                      onMouseDown={(e) => handleElementMouseDown(e, el.id, 'rotate')}
+                      onPointerDown={(e) => handleElementPointerDown(e, el.id, 'rotate')}
                       className="absolute -top-6 left-1/2 -translate-x-1/2 w-3 h-3 bg-veltis-violet border border-white rounded-full cursor-alias flex items-center justify-center pointer-events-auto"
                       title="Drag to Rotate"
                     >
@@ -1056,6 +1075,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({ pageIndex, pdfDoc }) => 
           )}
         </div>
       </div>
+    </div>
     </div>
   );
 };

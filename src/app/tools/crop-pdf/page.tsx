@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { cropPdf } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Crop, X } from 'lucide-react';
 
 export default function CropPdfPage() {
@@ -48,7 +48,7 @@ export default function CropPdfPage() {
     
     setIsProcessing(true);
     try {
-      const resultBytes = await cropPdf(file, margins);
+      const resultBytes = await (await import('../../../utils/pdf-tools')).cropPdf(file, margins);
       const blob = new Blob([resultBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

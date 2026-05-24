@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { protectPdf } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, X, Lock, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export default function ProtectPdfPage() {
@@ -58,7 +58,7 @@ export default function ProtectPdfPage() {
     
     setIsProcessing(true);
     try {
-      const pdfBytes = await protectPdf(file, password);
+      const pdfBytes = await (await import('../../../utils/pdf-tools')).protectPdf(file, password);
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

@@ -89,7 +89,7 @@ interface EditorState {
   mobileSidebarOpen: 'left' | 'right' | null;
 
   // Canvas State
-  activeTool: 'select' | 'text' | 'image' | 'signature' | 'shape' | 'draw' | 'erase' | 'annotation';
+  activeTool: 'select' | 'pan' | 'text' | 'image' | 'signature' | 'shape' | 'draw' | 'erase' | 'annotation';
   zoom: number; // 0.1 to 4.0
   panOffset: { x: number; y: number };
   selectedElementIds: string[];
@@ -148,7 +148,7 @@ interface EditorState {
   setMobileSidebarOpen: (side: 'left' | 'right' | null) => void;
 
   // Tool & Canvas operations
-  setActiveTool: (tool: 'select' | 'text' | 'image' | 'signature' | 'shape' | 'draw' | 'erase' | 'annotation') => void;
+  setActiveTool: (tool: 'select' | 'pan' | 'text' | 'image' | 'signature' | 'shape' | 'draw' | 'erase' | 'annotation') => void;
   setZoom: (zoom: number | ((prev: number) => number)) => void;
   setPanOffset: (offset: { x: number; y: number } | ((prev: { x: number; y: number }) => { x: number; y: number })) => void;
   setSelectedElementIds: (ids: string[]) => void;

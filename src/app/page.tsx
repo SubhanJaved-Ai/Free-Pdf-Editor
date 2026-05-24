@@ -69,12 +69,12 @@ export default function HomePage() {
   };
 
   const tools = [
-    { title: 'Edit', icon: <Type size={18} />, href: '/editor?tool=edit-pdf' },
-    { title: 'Merge', icon: <LayoutPanelTop size={18} />, href: '/editor?tool=merge-pdf' },
-    { title: 'Split', icon: <Scissors size={18} />, href: '/editor?tool=split-pdf' },
-    { title: 'Compress', icon: <Settings size={18} />, href: '/editor?tool=compress-pdf' },
-    { title: 'Sign', icon: <FileSignature size={18} />, href: '/editor?tool=sign-pdf' },
-    { title: 'Protect', icon: <Lock size={18} />, href: '/editor?tool=protect-pdf' },
+    { title: 'Edit', icon: <Type size={18} />, href: '/editor' },
+    { title: 'Merge', icon: <LayoutPanelTop size={18} />, href: '/tools/merge-pdf' },
+    { title: 'Split', icon: <Scissors size={18} />, href: '/tools/split-pdf' },
+    { title: 'Compress', icon: <Settings size={18} />, href: '/tools/compress-pdf' },
+    { title: 'Sign', icon: <FileSignature size={18} />, href: '/editor' },
+    { title: 'Protect', icon: <Lock size={18} />, href: '/tools/protect-pdf' },
   ];
 
   return (

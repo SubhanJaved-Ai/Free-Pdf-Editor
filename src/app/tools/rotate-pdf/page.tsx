@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { rotatePdf, generatePdfThumbnails } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, X, RotateCw } from 'lucide-react';
 import Image from 'next/image';
 
@@ -48,10 +48,12 @@ export default function RotatePdfPage() {
 
   useEffect(() => {
     if (file) {
-      generatePdfThumbnails(file).then(thumbs => {
-        setThumbnails(thumbs);
-        setSelectedPages(new Set());
-      }).catch(err => console.error("Failed to generate thumbnails", err));
+      import('../../../utils/pdf-tools').then(module => {
+        module.generatePdfThumbnails(file).then(thumbs => {
+          setThumbnails(thumbs);
+          setSelectedPages(new Set());
+        }).catch(err => console.error("Failed to generate thumbnails", err));
+      });
     } else {
       setThumbnails([]);
       setSelectedPages(new Set());
@@ -83,7 +85,7 @@ export default function RotatePdfPage() {
     
     setIsProcessing(true);
     try {
-      const pdfBytes = await rotatePdf(file, rotateMode, angle, Array.from(selectedPages));
+      const pdfBytes = await (await import('../../../utils/pdf-tools')).rotatePdf(file, rotateMode, angle, Array.from(selectedPages));
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

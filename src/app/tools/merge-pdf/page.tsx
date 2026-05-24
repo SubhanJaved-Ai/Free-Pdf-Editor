@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { mergePdfs } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Trash2, ArrowUp, ArrowDown, Download, Loader2 } from 'lucide-react';
 
 export default function MergePdfPage() {
@@ -69,7 +69,7 @@ export default function MergePdfPage() {
     
     setIsMerging(true);
     try {
-      const mergedBytes = await mergePdfs(files);
+      const mergedBytes = await (await import('../../../utils/pdf-tools')).mergePdfs(files);
       const blob = new Blob([mergedBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setMergedPdfUrl(url);

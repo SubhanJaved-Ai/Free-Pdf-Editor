@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { addPageNumbers } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Type, X } from 'lucide-react';
 
 export default function PageNumbersPage() {
@@ -53,7 +53,7 @@ export default function PageNumbersPage() {
     
     setIsProcessing(true);
     try {
-      const resultBytes = await addPageNumbers(file, { position, fontType, fontSize, color, opacity, format });
+      const resultBytes = await (await import('../../../utils/pdf-tools')).addPageNumbers(file, { position, fontType, fontSize, color, opacity, format });
       const blob = new Blob([resultBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

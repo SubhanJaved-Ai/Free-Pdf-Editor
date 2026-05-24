@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { compressPdf } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Settings, X, ArrowRight } from 'lucide-react';
 
 export default function CompressPdfPage() {
@@ -48,7 +48,7 @@ export default function CompressPdfPage() {
     
     setIsCompressing(true);
     try {
-      const compressedBytes = await compressPdf(file, compressionLevel);
+      const compressedBytes = await (await import('../../../utils/pdf-tools')).compressPdf(file, compressionLevel);
       const blob = new Blob([compressedBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

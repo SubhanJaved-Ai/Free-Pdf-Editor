@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { deletePages, generatePdfThumbnails } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, X, FileMinus, Trash2 } from 'lucide-react';
 
 export default function DeletePagesPage() {
@@ -45,10 +45,12 @@ export default function DeletePagesPage() {
 
   useEffect(() => {
     if (file) {
-      generatePdfThumbnails(file).then(thumbs => {
-        setThumbnails(thumbs);
-        setPagesToDelete(new Set());
-      }).catch(err => console.error("Failed to generate thumbnails", err));
+      import('../../../utils/pdf-tools').then(module => {
+        module.generatePdfThumbnails(file).then(thumbs => {
+          setThumbnails(thumbs);
+          setPagesToDelete(new Set());
+        }).catch(err => console.error("Failed to generate thumbnails", err));
+      });
     } else {
       setThumbnails([]);
       setPagesToDelete(new Set());
@@ -76,7 +78,7 @@ export default function DeletePagesPage() {
     
     setIsProcessing(true);
     try {
-      const pdfBytes = await deletePages(file, Array.from(pagesToDelete));
+      const pdfBytes = await (await import('../../../utils/pdf-tools')).deletePages(file, Array.from(pagesToDelete));
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

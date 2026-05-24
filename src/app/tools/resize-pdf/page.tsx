@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { resizePdf } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Maximize, X } from 'lucide-react';
 
 export default function ResizePdfPage() {
@@ -49,7 +49,7 @@ export default function ResizePdfPage() {
     
     setIsProcessing(true);
     try {
-      const resultBytes = await resizePdf(file, pageSize, scaleMode);
+      const resultBytes = await (await import('../../../utils/pdf-tools')).resizePdf(file, pageSize, scaleMode);
       const blob = new Blob([resultBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

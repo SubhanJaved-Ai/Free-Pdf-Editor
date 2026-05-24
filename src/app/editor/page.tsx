@@ -427,7 +427,7 @@ export default function EditorPage() {
       />
 
       {/* Editor Layout Splitter */}
-      <div className={`flex-1 w-full flex ${layoutMode === 'horizontal' ? 'flex-col' : ''} overflow-hidden pt-16`}>
+      <div className={`flex-1 w-full flex ${layoutMode === 'horizontal' ? 'flex-col' : ''} overflow-hidden pb-16 pt-[64px] md:pt-0 md:pb-0`}>
         {/* Top/Middle Area */}
         <div className="flex-1 flex overflow-hidden relative">
           {layoutMode === 'vertical' && (

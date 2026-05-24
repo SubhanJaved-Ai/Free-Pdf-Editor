@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { editPdfMetadata } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, Edit3, X, Save } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 
@@ -74,7 +74,7 @@ export default function EditMetadataPage() {
     if (!file) return;
     setIsProcessing(true);
     try {
-      const updatedBytes = await editPdfMetadata(file, metadata);
+      const updatedBytes = await (await import('../../../utils/pdf-tools')).editPdfMetadata(file, metadata);
       const blob = new Blob([updatedBytes as unknown as BlobPart], { type: 'application/pdf' });
       setResultUrl(URL.createObjectURL(blob));
     } catch (error) {

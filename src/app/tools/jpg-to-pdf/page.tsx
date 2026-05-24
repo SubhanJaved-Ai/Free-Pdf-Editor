@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { imagesToPdf } from '../../../utils/pdf-tools';
+
 import { UploadCloud, Image as ImageIcon, Trash2, ArrowUp, ArrowDown, Download, Loader2, Settings } from 'lucide-react';
 
 export default function JpgToPdfPage() {
@@ -74,7 +74,7 @@ export default function JpgToPdfPage() {
     
     setIsConverting(true);
     try {
-      const pdfBytes = await imagesToPdf(files, { pageSize, orientation, margin });
+      const pdfBytes = await (await import('../../../utils/pdf-tools')).imagesToPdf(files, { pageSize, orientation, margin });
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setResultUrl(url);

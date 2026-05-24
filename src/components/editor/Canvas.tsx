@@ -82,7 +82,8 @@ const DraggableZoomWidget = () => {
   };
 
   const isPos = pos !== null;
-  const style = isPos ? { left: pos.left, top: pos.top, right: 'auto', bottom: 'auto' } : { bottom: '24px', right: '24px' };
+  const defaultBottom = typeof window !== 'undefined' && window.innerWidth <= 768 ? '90px' : '24px';
+  const style = isPos ? { left: pos.left, top: pos.top, right: 'auto', bottom: 'auto' } : { bottom: defaultBottom, right: '24px' };
   
   const sizeMap = {
     sm: { scale: 'scale-90', icon: 14, pad: 'p-0.5' },
@@ -284,9 +285,9 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
     return () => container.removeEventListener('wheel', handleWheel);
   }, [setZoom]);
 
-  // Handle Spacebar panning interactions
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (isSpacePressed || (activeTool === 'select' && e.button === 1)) { // Middle mouse click
+  // Handle Spacebar or Pan tool panning interactions
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (isSpacePressed || activeTool === 'pan' || (activeTool === 'select' && e.button === 1)) {
       setIsPanning(true);
       if (containerRef.current) {
         setPanStart({ 
@@ -303,7 +304,7 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
   useEffect(() => {
     if (!isPanning) return;
 
-    const handleWindowMouseMove = (e: MouseEvent) => {
+    const handleWindowPointerMove = (e: PointerEvent) => {
       const deltaX = e.clientX - panStart.x;
       const deltaY = e.clientY - panStart.y;
       
@@ -320,16 +321,16 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
       });
     };
 
-    const handleWindowMouseUp = () => {
+    const handleWindowPointerUp = () => {
       setIsPanning(false);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
 
-    window.addEventListener('mousemove', handleWindowMouseMove);
-    window.addEventListener('mouseup', handleWindowMouseUp);
+    window.addEventListener('pointermove', handleWindowPointerMove);
+    window.addEventListener('pointerup', handleWindowPointerUp);
     return () => {
-      window.removeEventListener('mousemove', handleWindowMouseMove);
-      window.removeEventListener('mouseup', handleWindowMouseUp);
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [isPanning, panStart]);
@@ -401,9 +402,9 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
   return (
     <div 
       ref={containerRef}
-      onMouseDown={handleMouseDown}
-      className={`flex-1 h-[calc(100vh-4rem)] overflow-auto canvas-grid-bg relative flex flex-col items-center focus:outline-none ${
-        isPanning ? 'cursor-grabbing' : isSpacePressed ? 'cursor-grab' : 'cursor-default'
+      onPointerDown={handlePointerDown}
+      className={`flex-1 h-[calc(100vh-4rem)] overflow-auto canvas-grid-bg relative flex flex-col items-center focus:outline-none touch-none ${
+        isPanning ? 'cursor-grabbing' : (isSpacePressed || activeTool === 'pan') ? 'cursor-grab' : 'cursor-default'
       }`}
       tabIndex={0}
     >

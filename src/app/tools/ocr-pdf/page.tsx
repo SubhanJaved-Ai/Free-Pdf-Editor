@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { extractPdfText } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, FileText, X, Copy, CheckCircle } from 'lucide-react';
 
 export default function OcrExtractPage() {
@@ -48,7 +48,7 @@ export default function OcrExtractPage() {
     setIsProcessing(true);
     setProgress(0);
     try {
-      const text = await extractPdfText(file, useOcr, (p) => {
+      const text = await (await import('../../../utils/pdf-tools')).extractPdfText(file, useOcr, (p) => {
         setProgress(Math.round(p * 100));
       });
       setExtractedText(text || "No text could be extracted from this document.");

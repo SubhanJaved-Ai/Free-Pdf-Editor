@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
-import { redactAndFlattenPdf, generatePdfThumbnails } from '../../../utils/pdf-tools';
+
 import { UploadCloud, File as FileIcon, Download, Loader2, ShieldAlert, X, Eraser, AlertTriangle } from 'lucide-react';
 
 interface Rect {
@@ -61,7 +61,7 @@ export default function RedactPdfPage() {
     setFile(f);
     setIsProcessing(true);
     try {
-      const thumbs = await generatePdfThumbnails(f, 0.8);
+      const thumbs = await (await import('../../../utils/pdf-tools')).generatePdfThumbnails(f, 0.8);
       setThumbnails(thumbs);
     } catch (e) {
       console.error(e);
@@ -152,7 +152,7 @@ export default function RedactPdfPage() {
     
     setIsProcessing(true);
     try {
-      const redactedBytes = await redactAndFlattenPdf(file, rects);
+      const redactedBytes = await (await import('../../../utils/pdf-tools')).redactAndFlattenPdf(file, rects);
       const blob = new Blob([redactedBytes as unknown as BlobPart], { type: 'application/pdf' });
       setResultUrl(URL.createObjectURL(blob));
     } catch (error) {

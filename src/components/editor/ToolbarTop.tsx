@@ -10,8 +10,9 @@ import {
   Type, 
   Image as ImageIcon, 
   PenTool, 
-  Square, 
-  Circle, 
+  Square,
+  Circle,
+  Hand,
   Undo2, 
   Redo2, 
   Sparkles, 
@@ -275,6 +276,7 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
 
   const tools = [
     { id: 'select', label: 'Select', icon: Pointer, tip: 'Select and move elements' },
+    { id: 'pan', label: 'Pan', icon: Hand, tip: 'Pan and move canvas smoothly' },
     { id: 'text', label: 'Text', icon: Type, tip: 'Edit and add text' },
     { id: 'image', label: 'Image', icon: ImageIcon, tip: 'Upload and edit images' },
     { id: 'signature', label: 'Signature', icon: PenTool, tip: 'Create or upload signatures' },
@@ -284,7 +286,8 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
   ] as const;
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm flex justify-between items-center h-16 px-6">
+    <>
+    <header className="h-16 w-full bg-surface-container/95 md:bg-surface-container/80 md:backdrop-blur-xl border-b border-outline-variant/30 flex items-center justify-between px-2 md:px-4 lg:px-6 shadow-sm z-50 flex-shrink-0">
       {/* Left side: Back & Branding */}
       <div className="flex items-center gap-4">
         {/* Mobile Left Sidebar Toggle */}
@@ -320,228 +323,36 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
             {fileName || 'No Document'}
           </p>
         </div>
+        
+        {/* Mobile Right Sidebar Toggle */}
+        <button
+          onClick={() => setMobileSidebarOpen(mobileSidebarOpen === 'right' ? null : 'right')}
+          className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-on-surface bg-surface-container hover:bg-surface-variant transition-colors shadow-sm ml-1 flex-shrink-0"
+        >
+          <Sliders size={18} />
+        </button>
       </div>
 
-      {/* Main Drawing/Editing Tools - Kept in center for UX */}
-      <nav className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-surface-container-high border border-outline-variant/30 p-1 rounded-lg shadow-sm">
-        {/* Undo/Redo Group inside central nav */}
-        <div className="flex items-center gap-1 border-r border-outline-variant/30 pr-1 mr-1 hidden md:flex">
-          <button
-            onClick={undo}
-            disabled={past.length === 0}
-            title="Undo — Step back (Ctrl+Z)"
-            className="p-2 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest disabled:opacity-30 disabled:pointer-events-none transition duration-150 relative group"
-          >
-            <Undo2 size={16} />
-            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-50">Undo</div>
-          </button>
-          <button
-            onClick={redo}
-            disabled={future.length === 0}
-            title="Redo — Step forward (Ctrl+Shift+Z)"
-            className="p-2 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest disabled:opacity-30 disabled:pointer-events-none transition duration-150 relative group"
-          >
-            <Redo2 size={16} />
-            <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-50">Redo</div>
-          </button>
-        </div>
-
-        {tools.map((tool) => {
-          const Icon = tool.icon;
-          const isActive = activeTool === tool.id;
-          
-          if (tool.id === 'signature') {
-            return (
-              <div key={tool.id} className="relative">
-                <button
-                  onClick={() => {
-                    setActiveTool('signature');
-                    setIsSignatureOpen(!isSignatureOpen);
-                  }}
-                  title={`Signature — ${tool.tip}`}
-                  className={`p-2 rounded-md transition duration-150 relative group ${
-                    isActive || isSignatureOpen
-                      ? 'bg-white text-primary shadow-sm ring-1 ring-primary/20' 
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'
-                  }`}
-                >
-                  <Icon size={16} />
-                  {/* Premium Tooltip */}
-                  <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-50">
-                    Signature
-                  </div>
-                </button>
-                
-                {isSignatureOpen && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[360px] bg-white rounded-xl shadow-2xl border border-outline-variant/50 p-4 z-50 flex flex-col gap-3 max-h-[80vh] overflow-y-auto">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-sm font-bold text-on-surface">Create Signature</h4>
-                      <button 
-                        onClick={() => setIsSignatureOpen(false)}
-                        className="text-on-surface-variant hover:text-on-surface text-lg leading-none"
-                      >×</button>
-                    </div>
-                    
-                    {/* Tabs: Type / Draw / Upload */}
-                    <div className="flex gap-1 bg-surface-container rounded-lg p-1">
-                      {(['type', 'draw', 'upload'] as const).map(tab => (
-                        <button
-                          key={tab}
-                          onClick={() => setSignatureTab(tab)}
-                          className={`flex-1 py-1.5 px-3 text-xs font-semibold rounded-md transition-all capitalize flex items-center justify-center gap-1.5 ${
-                            signatureTab === tab
-                              ? 'bg-white text-primary shadow-sm'
-                              : 'text-on-surface-variant hover:text-on-surface'
-                          }`}
-                        >
-                          {tab === 'type' && <Type size={12} />}
-                          {tab === 'draw' && <Pencil size={12} />}
-                          {tab === 'upload' && <Upload size={12} />}
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* TYPE TAB */}
-                    {signatureTab === 'type' && (
-                      <>
-                        <input 
-                          type="text" 
-                          value={signatureText}
-                          onChange={(e) => setSignatureText(e.target.value)}
-                          className="w-full border border-outline-variant/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="Type your name"
-                        />
-                        
-                        {/* Live Preview */}
-                        <div className="h-20 w-full border border-dashed border-outline-variant/50 rounded-lg flex items-center justify-center bg-surface-container-lowest overflow-hidden">
-                          <span style={{ fontFamily: `"${signatureFonts.find(f => f.name === selectedFont)?.family}"`, fontSize: '42px', color: '#000' }}>
-                            {signatureText || 'Preview'}
-                          </span>
-                        </div>
-                        
-                        {/* Font Grid */}
-                        <div className="grid grid-cols-3 gap-1 max-h-48 overflow-y-auto pr-1">
-                          {signatureFonts.map(font => (
-                            <button
-                              key={font.name}
-                              onClick={() => setSelectedFont(font.name)}
-                              className={`p-1.5 border rounded-lg text-sm flex items-center justify-center truncate transition-all ${
-                                selectedFont === font.name 
-                                  ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary/30 shadow-sm' 
-                                  : 'border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/60'
-                              }`}
-                              style={{ fontFamily: `"${font.family}", cursive` }}
-                            >
-                              {signatureText || font.name}
-                            </button>
-                          ))}
-                        </div>
-                        
-                        <button 
-                          onClick={handleCreateTypedSignature}
-                          disabled={!signatureText.trim()}
-                          className="w-full bg-primary text-on-primary font-bold py-2.5 rounded-lg hover:bg-primary-container transition-colors shadow-md disabled:opacity-40 disabled:pointer-events-none"
-                        >
-                          Use This Signature
-                        </button>
-                      </>
-                    )}
-
-                    {/* DRAW TAB */}
-                    {signatureTab === 'draw' && (
-                      <>
-                        <p className="text-xs text-on-surface-variant">Draw your signature below:</p>
-                        <div className="border border-outline-variant/50 rounded-lg overflow-hidden bg-white relative">
-                          <canvas
-                            ref={canvasDrawRef}
-                            width={380}
-                            height={150}
-                            className="w-full cursor-crosshair"
-                            onMouseDown={handleDrawStart}
-                            onMouseMove={handleDrawMove}
-                            onMouseUp={handleDrawEnd}
-                            onMouseLeave={handleDrawEnd}
-                          />
-                          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px w-3/4 bg-outline-variant/40" />
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleClearDraw}
-                            className="flex-1 py-2 rounded-lg border border-outline-variant/50 text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
-                          >
-                            Clear
-                          </button>
-                          <button
-                            onClick={handleSaveDrawnSignature}
-                            className="flex-1 bg-primary text-on-primary font-bold py-2 rounded-lg hover:bg-primary-container transition-colors shadow-md"
-                          >
-                            Use Drawn Signature
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    {/* UPLOAD TAB */}
-                    {signatureTab === 'upload' && (
-                      <>
-                        <p className="text-xs text-on-surface-variant">Upload a signature image (PNG, JPG, SVG):</p>
-                        <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-outline-variant/50 rounded-xl p-8 hover:border-primary/50 hover:bg-primary/[0.03] transition-colors cursor-pointer">
-                          <Upload size={32} className="text-on-surface-variant" />
-                          <span className="text-sm font-medium text-on-surface-variant">Click to browse files</span>
-                          <span className="text-xs text-on-surface-variant/60">PNG, JPG, SVG supported</span>
-                          <input type="file" accept="image/*" className="hidden" onChange={handleUploadSignature} />
-                        </label>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          return (
-            <button
-              key={tool.id}
-              onClick={() => {
-                setActiveTool(tool.id);
-                setIsSignatureOpen(false);
-              }}
-              title={`${tool.label} — ${tool.tip}`}
-              className={`p-2 rounded-md transition duration-150 relative group ${ 
-                isActive 
-                  ? 'bg-white text-primary shadow-sm ring-1 ring-primary/20' 
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest'
-              }`}
-            >
-              <Icon size={16} />
-              {/* Premium Tooltip */}
-              <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-50">
-                {tool.label}
-              </div>
-            </button>
-          );
-        })}
-      </nav>
-
       {/* Actions & Utilities */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4 ml-auto">
         {/* AI OCR Indicator */}
         {isOcrRunning && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse">
             <Sparkles size={13} className="animate-spin" />
             <span>OCR {Math.round(ocrProgress * 100)}%</span>
           </div>
         )}
 
-        {/* Auto-save Status */}
-        <SaveStatusIndicator />
+        {/* Auto-save Status - hide on very small screens */}
+        <div className="hidden sm:block">
+          <SaveStatusIndicator />
+        </div>
 
-        {/* Layout Toggle */}
+        {/* Layout Toggle - hide on mobile */}
         <button 
           onClick={() => setLayoutMode(layoutMode === 'vertical' ? 'horizontal' : 'vertical')}
           title={`Switch to ${layoutMode === 'vertical' ? 'Horizontal' : 'Vertical'} Layout`}
-          className="flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/30 ml-2"
+          className="hidden md:flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/30 ml-2"
         >
           <LayoutDashboard size={16} className={layoutMode === 'horizontal' ? 'rotate-90 text-primary' : ''} />
         </button>
@@ -549,10 +360,11 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
         {/* Top Header Actions */}
         <button 
           onClick={onUploadClick}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant text-sm font-medium transition-colors panel-transition border border-outline-variant/30"
+          className="flex items-center justify-center w-10 h-10 md:w-auto md:px-4 md:py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant text-sm font-medium transition-colors panel-transition border border-outline-variant/30"
+          title="Upload New"
         >
           <UploadCloud size={16} />
-          <span className="hidden xl:inline">Upload New</span>
+          <span className="hidden xl:inline ml-2">Upload New</span>
         </button>
 
         <button 
@@ -569,19 +381,20 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
             }
           }}
           disabled={saveState === 'saving'}
-          className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all panel-transition ${
+          className={`flex items-center justify-center w-10 h-10 md:w-auto md:px-5 md:py-2 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all panel-transition ${
             saveState === 'saved'
               ? 'bg-emerald-600 text-white'
               : saveState === 'error'
               ? 'bg-error text-on-error'
               : 'bg-primary text-on-primary hover:bg-primary-container'
           }`}
+          title="Save"
         >
           {saveState === 'saving' && <Loader2 size={16} className="animate-spin" />}
           {saveState === 'saved' && <Check size={16} />}
           {saveState === 'error' && <Save size={16} />}
           {saveState === 'idle' && <Save size={16} />}
-          <span>
+          <span className="hidden sm:inline ml-2">
             {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved!' : saveState === 'error' ? 'Error' : 'Save'}
           </span>
         </button>
@@ -589,21 +402,219 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
         <button
           onClick={onExport}
           title="Export — Download edited PDF"
-          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-secondary text-on-secondary text-sm font-semibold hover:bg-secondary-container shadow-md hover:shadow-lg transition-all panel-transition"
+          className="flex items-center justify-center w-10 h-10 md:w-auto md:px-5 md:py-2 rounded-lg bg-secondary text-on-secondary text-sm font-semibold hover:bg-secondary-container shadow-md hover:shadow-lg transition-all panel-transition"
         >
           <Download size={16} />
-          <span className="hidden sm:inline">Export</span>
-        </button>
-
-        {/* Mobile Right Sidebar Toggle */}
-        <button
-          onClick={() => setMobileSidebarOpen(mobileSidebarOpen === 'right' ? null : 'right')}
-          className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-on-surface bg-surface-container hover:bg-surface-variant transition-colors shadow-sm ml-1"
-        >
-          <Sliders size={18} />
+          <span className="hidden sm:inline ml-2">Export</span>
         </button>
       </div>
     </header>
+
+    {/* Main Drawing/Editing Tools - Floating just below header on mobile, top centered on desktop */}
+    <nav className="fixed top-[72px] left-2 right-2 w-auto rounded-2xl md:top-3 md:left-1/2 md:-translate-x-1/2 flex items-center justify-around md:justify-center md:gap-1 bg-surface-container-highest md:bg-surface-container-high border md:border border-outline-variant/30 p-2 md:p-1 shadow-2xl shadow-black/20 md:shadow-sm z-[100]">
+      {/* Undo/Redo Group inside central nav */}
+      <div className="flex items-center gap-1 border-r border-outline-variant/30 pr-1 mr-1 hidden md:flex">
+        <button
+          onClick={undo}
+          disabled={past.length === 0}
+          title="Undo — Step back (Ctrl+Z)"
+          className="p-2 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest disabled:opacity-30 disabled:pointer-events-none transition duration-150 relative group"
+        >
+          <Undo2 size={16} />
+          <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">Undo</div>
+        </button>
+        <button
+          onClick={redo}
+          disabled={future.length === 0}
+          title="Redo — Step forward (Ctrl+Shift+Z)"
+          className="p-2 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest disabled:opacity-30 disabled:pointer-events-none transition duration-150 relative group"
+        >
+          <Redo2 size={16} />
+          <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">Redo</div>
+        </button>
+      </div>
+
+      {tools.map((tool) => {
+        const Icon = tool.icon;
+        const isActive = activeTool === tool.id;
+        
+        if (tool.id === 'signature') {
+          return (
+            <div key={tool.id} className="relative flex-shrink-0">
+              <button
+                onClick={() => {
+                  setActiveTool('signature');
+                  setIsSignatureOpen(!isSignatureOpen);
+                }}
+                title={`Signature — ${tool.tip}`}
+                className={`p-2.5 md:p-2 rounded-lg transition duration-150 relative group flex items-center justify-center ${
+                  isActive || isSignatureOpen
+                    ? 'bg-primary text-on-primary shadow-sm ring-2 ring-primary/30' 
+                    : 'text-on-surface hover:text-primary hover:bg-surface-container-highest'
+                }`}
+              >
+                <Icon size={20} className="md:w-4 md:h-4" />
+                {/* Premium Tooltip */}
+                <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 md:bottom-auto md:-bottom-9 md:top-auto px-2.5 py-1.5 rounded-md bg-on-surface text-surface text-[10px] md:text-[9px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">
+                  Signature
+                </div>
+              </button>
+              
+              {isSignatureOpen && (
+                <div className="fixed bottom-0 left-0 w-full rounded-t-2xl md:absolute md:bottom-auto md:top-[calc(100%+12px)] md:left-1/2 md:-translate-x-1/2 md:w-[360px] md:rounded-xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl border border-outline-variant/50 p-4 pb-8 md:pb-4 z-[150] flex flex-col gap-3 max-h-[60vh] md:max-h-[70vh] overflow-y-auto">
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-sm font-bold text-on-surface">Create Signature</h4>
+                    <button 
+                      onClick={() => setIsSignatureOpen(false)}
+                      className="text-on-surface-variant hover:text-on-surface text-lg leading-none"
+                    >×</button>
+                  </div>
+                  
+                  {/* Tabs: Type / Draw / Upload */}
+                  <div className="flex gap-1 bg-surface-container rounded-lg p-1">
+                    {(['type', 'draw', 'upload'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setSignatureTab(tab)}
+                        className={`flex-1 py-1.5 px-3 text-xs font-semibold rounded-md transition-all capitalize flex items-center justify-center gap-1.5 ${
+                          signatureTab === tab
+                            ? 'bg-white text-primary shadow-sm'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        {tab === 'type' && <Type size={12} />}
+                        {tab === 'draw' && <Pencil size={12} />}
+                        {tab === 'upload' && <Upload size={12} />}
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* TYPE TAB */}
+                  {signatureTab === 'type' && (
+                    <>
+                      <input 
+                        type="text" 
+                        value={signatureText}
+                        onChange={(e) => setSignatureText(e.target.value)}
+                        className="w-full border border-outline-variant/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Type your name"
+                      />
+                      
+                      {/* Live Preview */}
+                      <div className="h-20 w-full border border-dashed border-outline-variant/50 rounded-lg flex items-center justify-center bg-surface-container-lowest overflow-hidden">
+                        <span style={{ fontFamily: `"${signatureFonts.find(f => f.name === selectedFont)?.family}"`, fontSize: '42px', color: '#000' }}>
+                          {signatureText || 'Preview'}
+                        </span>
+                      </div>
+                      
+                      {/* Font Grid */}
+                      <div className="grid grid-cols-3 gap-1 max-h-40 md:max-h-48 overflow-y-auto pr-1">
+                        {signatureFonts.map(font => (
+                          <button
+                            key={font.name}
+                            onClick={() => setSelectedFont(font.name)}
+                            className={`p-1.5 border rounded-lg text-sm flex items-center justify-center truncate transition-all ${
+                              selectedFont === font.name 
+                                ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary/30 shadow-sm' 
+                                : 'border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/60'
+                            }`}
+                            style={{ fontFamily: `"${font.family}", cursive` }}
+                          >
+                            {signatureText || font.name}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      <button 
+                        onClick={handleCreateTypedSignature}
+                        disabled={!signatureText.trim()}
+                        className="w-full bg-primary text-on-primary font-bold py-2.5 rounded-lg hover:bg-primary-container transition-colors shadow-md disabled:opacity-40 disabled:pointer-events-none"
+                      >
+                        Use This Signature
+                      </button>
+                    </>
+                  )}
+
+                  {/* DRAW TAB */}
+                  {signatureTab === 'draw' && (
+                    <>
+                      <p className="text-xs text-on-surface-variant">Draw your signature below:</p>
+                      <div className="border border-outline-variant/50 rounded-lg overflow-hidden bg-white relative">
+                        <canvas
+                          ref={canvasDrawRef}
+                          width={380}
+                          height={150}
+                          className="w-full cursor-crosshair touch-none"
+                          onMouseDown={handleDrawStart}
+                          onMouseMove={handleDrawMove}
+                          onMouseUp={handleDrawEnd}
+                          onMouseLeave={handleDrawEnd}
+                          onTouchStart={(e) => { e.preventDefault(); handleDrawStart(e as any); }}
+                          onTouchMove={(e) => { e.preventDefault(); handleDrawMove(e as any); }}
+                          onTouchEnd={(e) => { e.preventDefault(); handleDrawEnd(); }}
+                        />
+                        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px w-3/4 bg-outline-variant/40 pointer-events-none" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleClearDraw}
+                          className="flex-1 py-2 rounded-lg border border-outline-variant/50 text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          onClick={handleSaveDrawnSignature}
+                          className="flex-1 bg-primary text-on-primary font-bold py-2 rounded-lg hover:bg-primary-container transition-colors shadow-md"
+                        >
+                          Use Drawn Signature
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {/* UPLOAD TAB */}
+                  {signatureTab === 'upload' && (
+                    <>
+                      <p className="text-xs text-on-surface-variant">Upload a signature image (PNG, JPG, SVG):</p>
+                      <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-outline-variant/50 rounded-xl p-8 hover:border-primary/50 hover:bg-primary/[0.03] transition-colors cursor-pointer">
+                        <Upload size={32} className="text-on-surface-variant" />
+                        <span className="text-sm font-medium text-on-surface-variant">Click to browse files</span>
+                        <span className="text-xs text-on-surface-variant/60">PNG, JPG, SVG supported</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleUploadSignature} />
+                      </label>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <button
+            key={tool.id}
+            onClick={() => {
+              setActiveTool(tool.id);
+              setIsSignatureOpen(false);
+            }}
+            title={`${tool.label} — ${tool.tip}`}
+            className={`p-2.5 md:p-2 flex-shrink-0 rounded-lg transition duration-150 relative group flex items-center justify-center ${ 
+              isActive 
+                ? 'bg-primary text-on-primary shadow-sm ring-2 ring-primary/30' 
+                : 'text-on-surface hover:text-primary hover:bg-surface-container-highest'
+            }`}
+          >
+            <Icon size={20} className="md:w-4 md:h-4" />
+            {/* Premium Tooltip */}
+            <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 md:bottom-auto md:-bottom-9 md:top-auto px-2.5 py-1.5 rounded-md bg-on-surface text-surface text-[10px] md:text-[9px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">
+              {tool.label}
+            </div>
+          </button>
+        );
+      })}
+    </nav>
+    </>
   );
 };
 export default ToolbarTop;
