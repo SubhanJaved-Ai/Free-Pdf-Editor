@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { useEditorStore } from '../../store/useEditorStore';
-import { Plus, Trash2, Copy, FileCode, Layers, ArrowUp, ArrowDown, X, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Copy, FileCode, Layers, ArrowUp, ArrowDown, X } from 'lucide-react';
 
 interface PageThumbnailProps {
   pdfDoc: any;
@@ -130,25 +130,25 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
       style={{ width: `${leftSidebarWidth}px` }}
     >
       {/* Title */}
-      <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between">
-        {isMobileOpen ? (
-          <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all">
-            <ArrowLeft size={16} /> Back
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 text-on-surface">
-            <Layers size={14} className="text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider">Pages Navigator</span>
-          </div>
-        )}
+      <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between relative">
+        <div className="flex items-center gap-2 text-on-surface">
+          <Layers size={14} className="text-primary" />
+          <span className="text-xs font-bold uppercase tracking-wider">Pages Navigator</span>
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] px-2 py-0.5 rounded bg-surface-container border border-outline-variant/30 text-on-surface-variant font-bold">
             {pageOrders.length} {pageOrders.length === 1 ? 'Page' : 'Pages'}
           </span>
+          {/* Mobile X Close Button — clearly visible, top-right, non-overlapping */}
           {isMobileOpen && (
-            <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider">
-              Pages
-            </div>
+            <button
+              onClick={() => setMobileSidebarOpen(null)}
+              className="md:hidden flex items-center justify-center w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-surface-container hover:border-outline-variant active:scale-90 transition-all shadow-sm"
+              aria-label="Close panel"
+              title="Close panel"
+            >
+              <X size={14} strokeWidth={2.5} />
+            </button>
           )}
         </div>
       </div>

@@ -24,7 +24,6 @@ import {
   Square,
   Pencil,
   X,
-  ArrowLeft
 } from 'lucide-react';
 
 const AdvancedColorPicker = ({ value, onChange, presets, allowTransparent = false }: { value: string, onChange: (c: string) => void, presets: string[], allowTransparent?: boolean }) => {
@@ -34,8 +33,9 @@ const AdvancedColorPicker = ({ value, onChange, presets, allowTransparent = fals
         <div 
           className="relative w-8 h-8 rounded-full shadow-sm border border-outline-variant/50 overflow-hidden flex-shrink-0" 
           style={{ 
-            backgroundColor: value === 'transparent' ? '#ffffff' : value, 
-            background: value === 'transparent' ? 'repeating-conic-gradient(#cbd5e1 0% 25%, transparent 0% 50%) 50% / 8px 8px' : undefined 
+            background: value === 'transparent'
+              ? 'repeating-conic-gradient(#cbd5e1 0% 25%, transparent 0% 50%) 50% / 8px 8px'
+              : value
           }}
         >
           <input 
@@ -176,20 +176,20 @@ export const SidebarRight: React.FC = () => {
         style={asideStyle}
       >
         <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4 flex-shrink-0">
-          {isMobileOpen ? (
-            <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all">
-              <ArrowLeft size={16} /> Back
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 text-on-surface">
-              <Settings size={14} className="text-primary" />
-              <span className="text-xs font-bold uppercase tracking-wider">Workspace Defaults</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-on-surface">
+            <Settings size={14} className="text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wider">Workspace Defaults</span>
+          </div>
+          {/* Mobile X Close Button — clearly visible, non-overlapping */}
           {isMobileOpen && (
-            <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider">
-              Defaults
-            </div>
+            <button
+              onClick={() => setMobileSidebarOpen(null)}
+              className="md:hidden flex items-center justify-center w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-surface-container hover:border-outline-variant active:scale-90 transition-all shadow-sm"
+              aria-label="Close panel"
+              title="Close panel"
+            >
+              <X size={14} strokeWidth={2.5} />
+            </button>
           )}
         </div>
 
@@ -278,21 +278,21 @@ export const SidebarRight: React.FC = () => {
       style={asideStyle}
     >
       <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-4 flex-shrink-0">
-        {isMobileOpen ? (
-          <button onClick={() => setMobileSidebarOpen(null)} className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all">
-            <ArrowLeft size={16} /> Back
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 text-on-surface">
-            <Sliders size={14} className="text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider">Properties</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 text-on-surface">
+          <Sliders size={14} className="text-primary" />
+          <span className="text-xs font-bold uppercase tracking-wider">Properties</span>
+        </div>
         <div className="flex items-center gap-2">
+          {/* Mobile X Close Button */}
           {isMobileOpen && (
-            <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider mr-2">
-              Properties
-            </div>
+            <button
+              onClick={() => setMobileSidebarOpen(null)}
+              className="md:hidden flex items-center justify-center w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface hover:bg-surface-container hover:border-outline-variant active:scale-90 transition-all shadow-sm"
+              aria-label="Close panel"
+              title="Close panel"
+            >
+              <X size={14} strokeWidth={2.5} />
+            </button>
           )}
           <button
             onClick={() => deleteElement(selectedElement.id)}
