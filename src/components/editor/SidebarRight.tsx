@@ -80,6 +80,7 @@ export const SidebarRight: React.FC = () => {
     elements,
     selectedElementIds,
     updateElement,
+    smartReplaceImage,
     deleteElement,
     textColor,
     setTextColor,
@@ -488,7 +489,7 @@ export const SidebarRight: React.FC = () => {
                   if (file) {
                     const reader = new FileReader();
                     reader.onload = () => {
-                      updateElement(selectedElement.id, { src: reader.result as string });
+                      smartReplaceImage(selectedElement.id, reader.result as string);
                     };
                     reader.readAsDataURL(file);
                   }

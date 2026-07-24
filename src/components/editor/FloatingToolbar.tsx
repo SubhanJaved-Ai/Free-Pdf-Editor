@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useEditorStore, EditorElement } from '../../store/useEditorStore';
-import { Trash2, Copy, ArrowUp, ArrowDown, Type, RotateCcw } from 'lucide-react';
+import { Trash2, Copy, ArrowUp, ArrowDown, Type, RotateCcw, Image as ImageIcon } from 'lucide-react';
 
 interface FloatingToolbarProps {
   selectedElement: EditorElement;
@@ -110,6 +110,34 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({ selectedElemen
         >
           <Type size={12} className="text-veltis-cyan" />
           <span className="text-[9px] font-semibold text-zinc-300">Edit Text</span>
+        </button>
+      )}
+
+      {/* Replace Image Button (For image elements) */}
+      {selectedElement.type === 'image' && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (event: any) => {
+              const file = event.target.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  useEditorStore.getState().smartReplaceImage(selectedElement.id, reader.result as string);
+                };
+                reader.readAsDataURL(file);
+              }
+            };
+            input.click();
+          }}
+          className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-primary transition flex items-center gap-1 px-1.5 border-r border-white/5"
+          title="Replace Image (Preserve Frame, Shape & Fit)"
+        >
+          <ImageIcon size={12} className="text-primary" />
+          <span className="text-[9px] font-semibold text-zinc-300">Replace Image</span>
         </button>
       )}
 

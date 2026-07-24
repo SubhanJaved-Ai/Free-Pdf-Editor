@@ -49,6 +49,8 @@ export interface EditorElement {
   flipH?: boolean;
   flipV?: boolean;
   objectFit?: 'contain' | 'cover' | 'fill' | 'none';
+  clipShape?: 'none' | 'circle' | 'rounded' | 'ellipse' | 'polygon';
+  clipPath?: string;
   
   // Visual Overlay Architecture Properties
   isOriginalPdfElement?: boolean; // native PDF extracted text or OCR text
@@ -158,6 +160,7 @@ interface EditorState {
   // Element operations
   addElement: (element: Omit<EditorElement, 'id'>, selectOnAdd?: boolean) => string;
   updateElement: (id: string, updates: Partial<EditorElement>) => void;
+  smartReplaceImage: (id: string, newSrc: string) => void;
   deleteElement: (id: string) => void;
   restoreElement: (id: string) => void;
   
@@ -414,13 +417,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           if (el.isOriginalPdfElement) {
             const finalEl = { ...el, ...updates };
             const textChanged = finalEl.text !== el.originalText;
+            const srcChanged = finalEl.src !== el.src;
             const xChanged = finalEl.x !== el.originalX;
             const yChanged = finalEl.y !== el.originalY;
             const wChanged = finalEl.width !== el.originalWidth;
             const hChanged = finalEl.height !== el.originalHeight;
             const rChanged = (finalEl.rotation || 0) !== 0;
             
-            isModified = textChanged || xChanged || yChanged || wChanged || hChanged || rChanged;
+            isModified = textChanged || srcChanged || xChanged || yChanged || wChanged || hChanged || rChanged;
           }
           return { 
             ...el, 
@@ -433,6 +437,34 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       
       return {
         elements: nextElements
+      };
+    });
+  },
+
+  smartReplaceImage: (id, newSrc) => {
+    set((state) => {
+      const currentElements = state.elements;
+      const target = currentElements.find(el => el.id === id);
+      if (!target) return {};
+
+      const updatedElements = currentElements.map((el) => {
+        if (el.id === id) {
+          return {
+            ...el,
+            src: newSrc,
+            // Automatically inherit original image container properties:
+            // position (x, y), width, height, rotation, opacity, clipping, crop, shape/frame
+            objectFit: el.objectFit || 'cover',
+            isModified: true,
+          };
+        }
+        return el;
+      });
+
+      return {
+        elements: updatedElements,
+        past: [...state.past, currentElements],
+        future: []
       };
     });
   },

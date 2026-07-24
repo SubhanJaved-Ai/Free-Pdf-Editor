@@ -106,6 +106,115 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
         originalHeight: (itemHeight / height) * 100
       });
     });
+
+    // Extract native PDF images from operator list
+    try {
+      const operatorList = await page.getOperatorList();
+      const fnArray = operatorList.fnArray;
+      const argsArray = operatorList.argsArray;
+      
+      let currentCtm = [1, 0, 0, 1, 0, 0];
+      const ctmStack: number[][] = [];
+
+      for (let i = 0; i < fnArray.length; i++) {
+        const fn = fnArray[i];
+        const args = argsArray[i];
+
+        if (pdfjs.OPS && fn === pdfjs.OPS.save) {
+          ctmStack.push([...currentCtm]);
+        } else if (pdfjs.OPS && fn === pdfjs.OPS.restore) {
+          if (ctmStack.length > 0) {
+            currentCtm = ctmStack.pop()!;
+          }
+        } else if (pdfjs.OPS && fn === pdfjs.OPS.transform) {
+          const [a1, b1, c1, d1, e1, f1] = currentCtm;
+          const [a2, b2, c2, d2, e2, f2] = args;
+          currentCtm = [
+            a1 * a2 + c1 * b2,
+            b1 * a2 + d1 * b2,
+            a1 * c2 + c1 * d2,
+            b1 * c2 + d1 * d2,
+            a1 * e2 + c1 * f2 + e1,
+            b1 * e2 + d1 * f2 + f1
+          ];
+        } else if (pdfjs.OPS && (fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintInlineImageXObject)) {
+          const imgName = args[0];
+          const [a, b, c, d, tx, ty] = currentCtm;
+
+          const pdfW = Math.hypot(a, b);
+          const pdfH = Math.hypot(c, d);
+          const rotationRad = Math.atan2(b, a);
+          const rotationDeg = Math.round((rotationRad * 180) / Math.PI);
+
+          const [vx1, vy1] = viewport.convertToViewportPoint(tx, ty);
+          const [vx2, vy2] = viewport.convertToViewportPoint(tx + a, ty + b);
+          const [vx3, vy3] = viewport.convertToViewportPoint(tx + c, ty + d);
+
+          const minX = Math.min(vx1, vx2, vx3);
+          const minY = Math.min(vy1, vy2, vy3);
+          const maxX = Math.max(vx1, vx2, vx3);
+          const maxY = Math.max(vy1, vy2, vy3);
+
+          const vWidth = Math.max(maxX - minX, Math.abs(pdfW));
+          const vHeight = Math.max(maxY - minY, Math.abs(pdfH));
+
+          const posX = (minX / width) * 100;
+          const posY = (minY / height) * 100;
+          const posW = (vWidth / width) * 100;
+          const posH = (vHeight / height) * 100;
+
+          const aspectRatio = vWidth / (vHeight || 1);
+          const isCircle = Math.abs(aspectRatio - 1.0) < 0.08;
+
+          let imgDataUrl: string | undefined;
+          try {
+            if (page.objs && typeof page.objs.has === 'function' && page.objs.has(imgName)) {
+              const imgObj = page.objs.get(imgName);
+              if (imgObj && imgObj.data) {
+                const canvas = document.createElement('canvas');
+                canvas.width = imgObj.width || 100;
+                canvas.height = imgObj.height || 100;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                  const imgData = ctx.createImageData(canvas.width, canvas.height);
+                  imgData.data.set(imgObj.data);
+                  ctx.putImageData(imgData, 0, 0);
+                  imgDataUrl = canvas.toDataURL('image/png');
+                }
+              }
+            }
+          } catch (e) {
+            // Silently ignore obj retrieval errors
+          }
+
+          const elementId = `orig-img-${pageIndex}-${Math.random().toString(36).substr(2, 9)}`;
+
+          elements.push({
+            id: elementId,
+            pageIndex,
+            type: 'image',
+            x: Math.max(0, Math.min(100, posX)),
+            y: Math.max(0, Math.min(100, posY)),
+            width: Math.max(1, Math.min(100, posW)),
+            height: Math.max(1, Math.min(100, posH)),
+            rotation: rotationDeg,
+            opacity: 1.0,
+            src: imgDataUrl || '',
+            objectFit: 'cover',
+            clipShape: isCircle ? 'circle' : 'none',
+            isOriginalPdfElement: true,
+            isModified: false,
+            isDeleted: false,
+            originalX: posX,
+            originalY: posY,
+            originalWidth: posW,
+            originalHeight: posH
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[PDF_PARSER] Image operator extraction notice:', err);
+    }
   }
   
   return {

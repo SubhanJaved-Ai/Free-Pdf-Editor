@@ -978,7 +978,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                   const warmth = el.warmth ?? 100;
                   const flipH = el.flipH ?? false;
                   const flipV = el.flipV ?? false;
-                  const objectFit = el.objectFit || 'contain';
+                  const objectFit = el.objectFit || (el.type === 'image' ? 'cover' : 'contain');
                   
                   const filterParts: string[] = [];
                   if (brightness !== 100) filterParts.push(`brightness(${brightness}%)`);
@@ -992,18 +992,32 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                   const transforms: string[] = [];
                   if (flipH) transforms.push('scaleX(-1)');
                   if (flipV) transforms.push('scaleY(-1)');
+
+                  const isCircle = el.clipShape === 'circle';
+                  const isRounded = el.clipShape === 'rounded' || (el.cornerRadius && el.cornerRadius > 0);
+                  const borderRadius = isCircle ? '50%' : isRounded ? `${el.cornerRadius || 8}px` : undefined;
+                  const clipPath = el.clipPath ? el.clipPath : (isCircle ? 'circle(50% at 50% 50%)' : undefined);
                   
                   return (
-                    <img
-                      src={el.src}
-                      alt="Layer Asset"
-                      className="w-full h-full pointer-events-none select-none"
+                    <div 
+                      className="w-full h-full overflow-hidden"
                       style={{
-                        objectFit: objectFit as any,
-                        filter: filterParts.length > 0 ? filterParts.join(' ') : undefined,
-                        transform: transforms.length > 0 ? transforms.join(' ') : undefined,
+                        borderRadius,
+                        clipPath,
                       }}
-                    />
+                    >
+                      <img
+                        src={el.src}
+                        alt="Layer Asset"
+                        className="w-full h-full pointer-events-none select-none"
+                        style={{
+                          objectFit: objectFit as any,
+                          objectPosition: 'center',
+                          filter: filterParts.length > 0 ? filterParts.join(' ') : undefined,
+                          transform: transforms.length > 0 ? transforms.join(' ') : undefined,
+                        }}
+                      />
+                    </div>
                   );
                 })()}
 

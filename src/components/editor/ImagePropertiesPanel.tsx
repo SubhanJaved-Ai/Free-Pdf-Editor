@@ -48,14 +48,42 @@ export const ImagePropertiesPanel: React.FC<ImagePropertiesPanelProps> = ({ elem
   ];
 
   const fitOptions: { value: EditorElement['objectFit']; label: string }[] = [
+    { value: 'cover', label: 'Cover (Smart Fill)' },
     { value: 'contain', label: 'Contain' },
-    { value: 'cover', label: 'Cover' },
     { value: 'fill', label: 'Stretch' },
     { value: 'none', label: 'Original' },
   ];
 
+  const frameShapes: { value: EditorElement['clipShape']; label: string }[] = [
+    { value: 'none', label: 'Rectangle' },
+    { value: 'circle', label: 'Circle' },
+    { value: 'rounded', label: 'Rounded' },
+  ];
+
   return (
     <div className="space-y-4">
+      {/* Section: Frame Shape / Masking */}
+      <div>
+        <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-2">
+          Frame Shape & Clipping
+        </label>
+        <div className="grid grid-cols-3 gap-1.5 mb-3">
+          {frameShapes.map(shape => (
+            <button
+              key={shape.value}
+              onClick={() => update('clipShape', shape.value)}
+              className={`py-1.5 rounded-md border text-[10px] font-semibold transition-all ${
+                (element.clipShape || 'none') === shape.value
+                  ? 'bg-primary/10 border-primary/30 text-primary'
+                  : 'bg-surface-container border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high'
+              }`}
+            >
+              {shape.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Section: Flip & Fit */}
       <div>
         <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-2">Transform</label>
@@ -89,7 +117,7 @@ export const ImagePropertiesPanel: React.FC<ImagePropertiesPanelProps> = ({ elem
       <div>
         <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-2">
           <Maximize size={11} className="inline mr-1" />
-          Image Fit
+          Image Fit (Aspect Ratio)
         </label>
         <div className="grid grid-cols-2 gap-1.5">
           {fitOptions.map(opt => (
@@ -97,7 +125,7 @@ export const ImagePropertiesPanel: React.FC<ImagePropertiesPanelProps> = ({ elem
               key={opt.value}
               onClick={() => update('objectFit', opt.value)}
               className={`py-1.5 rounded-md border text-[10px] font-semibold transition-all ${
-                (element.objectFit || 'contain') === opt.value
+                (element.objectFit || 'cover') === opt.value
                   ? 'bg-primary/10 border-primary/30 text-primary'
                   : 'bg-surface-container border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high'
               }`}

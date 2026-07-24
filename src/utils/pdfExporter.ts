@@ -52,15 +52,136 @@ function parseColor(colStr?: string) {
 async function embedDataUriImage(pdfDoc: PDFDocument, dataUri: string) {
   try {
     const parts = dataUri.split(';base64,');
-    const contentType = parts[0].split(':')[1];
-    const base64Data = parts[1];
+    const contentType = parts[0]?.split(':')[1] || 'image/png';
+    const base64Data = parts[1] || parts[0];
     const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     if (contentType === 'image/png') return await pdfDoc.embedPng(binaryData);
     if (contentType === 'image/jpeg' || contentType === 'image/jpg') return await pdfDoc.embedJpg(binaryData);
+    // Fallback: embed as PNG if unsupported type
+    return await pdfDoc.embedPng(binaryData);
   } catch (err) {
     console.error('Failed to embed image:', err);
   }
   return null;
+}
+
+/**
+ * Processes replacement image to apply object-fit: cover, frame shape clipping (circle, rounded, custom path),
+ * and image filters before embedding into exported PDF.
+ */
+async function processImageForExport(el: EditorElement, targetWidthPx: number, targetHeightPx: number): Promise<string> {
+  if (typeof window === 'undefined' || !el.src) return el.src || '';
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      // Use 2x resolution for high-DPI quality in PDF
+      const scale = 2;
+      const canvasW = Math.max(Math.round(targetWidthPx * scale), 20);
+      const canvasH = Math.max(Math.round(targetHeightPx * scale), 20);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        resolve(el.src || '');
+        return;
+      }
+
+      // 1. Frame Shape Clipping
+      const isCircle = el.clipShape === 'circle';
+      const isRounded = el.clipShape === 'rounded' || (el.cornerRadius && el.cornerRadius > 0);
+
+      if (isCircle) {
+        ctx.beginPath();
+        const r = Math.min(canvasW, canvasH) / 2;
+        ctx.arc(canvasW / 2, canvasH / 2, r, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+      } else if (isRounded) {
+        const rad = Math.min((el.cornerRadius || 16) * scale, Math.min(canvasW, canvasH) / 2);
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(0, 0, canvasW, canvasH, rad);
+        } else {
+          ctx.rect(0, 0, canvasW, canvasH);
+        }
+        ctx.closePath();
+        ctx.clip();
+      }
+
+      // 2. Object Fit Scaling (cover vs contain vs stretch)
+      const objectFit = el.objectFit || (el.type === 'image' ? 'cover' : 'contain');
+      let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
+      let dx = 0, dy = 0, dWidth = canvasW, dHeight = canvasH;
+
+      if (objectFit === 'cover') {
+        const imgAspect = img.naturalWidth / (img.naturalHeight || 1);
+        const targetAspect = canvasW / (canvasH || 1);
+
+        if (imgAspect > targetAspect) {
+          sHeight = img.naturalHeight;
+          sWidth = img.naturalHeight * targetAspect;
+          sx = (img.naturalWidth - sWidth) / 2;
+          sy = 0;
+        } else {
+          sWidth = img.naturalWidth;
+          sHeight = img.naturalWidth / targetAspect;
+          sx = 0;
+          sy = (img.naturalHeight - sHeight) / 2;
+        }
+      } else if (objectFit === 'contain') {
+        const imgAspect = img.naturalWidth / (img.naturalHeight || 1);
+        const targetAspect = canvasW / (canvasH || 1);
+
+        if (imgAspect > targetAspect) {
+          dWidth = canvasW;
+          dHeight = canvasW / imgAspect;
+          dx = 0;
+          dy = (canvasH - dHeight) / 2;
+        } else {
+          dHeight = canvasH;
+          dWidth = canvasH * imgAspect;
+          dx = (canvasW - dWidth) / 2;
+          dy = 0;
+        }
+      }
+
+      // 3. Image Filters & Transforms
+      const brightness = el.brightness ?? 100;
+      const contrast = el.contrast ?? 100;
+      const saturation = el.saturation ?? 100;
+      const blur = el.imgBlur ?? 0;
+      const grayscale = el.imgGrayscale ?? 0;
+      const filterParts: string[] = [];
+      if (brightness !== 100) filterParts.push(`brightness(${brightness}%)`);
+      if (contrast !== 100) filterParts.push(`contrast(${contrast}%)`);
+      if (saturation !== 100) filterParts.push(`saturate(${saturation}%)`);
+      if (blur > 0) filterParts.push(`blur(${blur * scale}px)`);
+      if (grayscale > 0) filterParts.push(`grayscale(${grayscale}%)`);
+      if (filterParts.length > 0) ctx.filter = filterParts.join(' ');
+
+      if (el.flipH || el.flipV) {
+        ctx.save();
+        ctx.translate(el.flipH ? canvasW : 0, el.flipV ? canvasH : 0);
+        ctx.scale(el.flipH ? -1 : 1, el.flipV ? -1 : 1);
+      }
+
+      ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+
+      if (el.flipH || el.flipV) {
+        ctx.restore();
+      }
+
+      resolve(canvas.toDataURL('image/png'));
+    };
+
+    img.onerror = () => resolve(el.src || '');
+    img.src = el.src || '';
+  });
 }
 
 // ─── Shape Drawing ────────────────────────────────────────────────────────────
@@ -358,7 +479,10 @@ export async function exportEditedPdf(
 
       // ── Image / Signature ─────────────────────────────────────────────────
       else if ((el.type === 'image' || el.type === 'signature') && el.src) {
-        const embedded = await embedDataUriImage(targetPdf, el.src);
+        const imageSrcToEmbed = el.type === 'image'
+          ? await processImageForExport(el, elW, elH)
+          : el.src;
+        const embedded = await embedDataUriImage(targetPdf, imageSrcToEmbed);
         if (embedded) {
           page.drawImage(embedded, { x: elX, y: elY, width: elW, height: elH, rotate: rot, opacity: el.opacity });
         }
