@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
+import { ColorPicker } from '../../../components/editor/ColorPicker';
 
 import { UploadCloud, File as FileIcon, Download, Loader2, X, Image as ImageIcon, Type, Droplets } from 'lucide-react';
 
@@ -209,16 +210,7 @@ export default function AddWatermarkPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-2">Color</label>
-                              <div className="flex items-center gap-2">
-                                <input 
-                                  type="color" 
-                                  value={color}
-                                  onChange={e => setColor(e.target.value)}
-                                  className="w-12 h-12 p-1 bg-white border border-outline-variant/60 rounded-xl cursor-pointer"
-                                />
-                                <span className="font-mono text-sm uppercase text-on-surface-variant">{color}</span>
-                              </div>
+                              <ColorPicker label="Color" value={color} onChange={setColor} />
                             </div>
                           </div>
                         </>

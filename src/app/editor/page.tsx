@@ -88,8 +88,8 @@ export default function EditorPage() {
         // Dragging right sidebar handle moves left to increase width
         const diff = startCoord - e.clientX;
         let newVal = startVal + diff;
-        if (newVal < 260) newVal = 260;
-        if (newVal > Math.min(520, window.innerWidth * 0.45)) newVal = Math.min(520, window.innerWidth * 0.45);
+        if (newVal < 320) newVal = 320;
+        if (newVal > Math.min(560, window.innerWidth * 0.45)) newVal = Math.min(560, window.innerWidth * 0.45);
         setRightSidebarWidth(newVal);
       } else if (target === 'bottom') {
         // Dragging bottom dock handle moves up to increase height

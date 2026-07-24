@@ -5,6 +5,7 @@ import { useEditorStore } from '../../store/useEditorStore';
 import { ImagePropertiesPanel } from './ImagePropertiesPanel';
 import { ShapePicker } from './ShapePicker';
 import { DrawingToolsPanel } from './DrawingToolsPanel';
+import { ColorPicker } from './ColorPicker';
 import { 
   Type, 
   Settings, 
@@ -25,7 +26,11 @@ import {
   ChevronDown,
   ChevronRight,
   Move,
-  Copy
+  Copy,
+  ArrowUp,
+  ArrowDown,
+  SlidersHorizontal,
+  Layers
 } from 'lucide-react';
 
 interface CollapsibleSectionProps {
@@ -34,6 +39,7 @@ interface CollapsibleSectionProps {
   defaultOpen?: boolean;
   badge?: string;
   children: React.ReactNode;
+  className?: string;
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
@@ -41,113 +47,38 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   icon: Icon,
   defaultOpen = true,
   badge,
-  children
+  children,
+  className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-outline-variant/30 rounded-xl bg-surface-container-lowest/60 overflow-hidden transition-all shadow-2xs">
+    <div className={`border border-outline-variant/30 rounded-2xl bg-surface-container-lowest/80 overflow-hidden transition-all shadow-2xs ${className}`}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3.5 py-2.5 bg-surface-container/40 hover:bg-surface-container/80 transition-colors select-none group"
+        className="w-full flex items-center justify-between px-4 py-3 bg-surface-container/30 hover:bg-surface-container/60 transition-colors select-none group"
       >
-        <div className="flex items-center gap-2 text-on-surface">
-          <Icon size={14} className="text-primary group-hover:scale-110 transition-transform" />
+        <div className="flex items-center gap-2.5 text-on-surface">
+          <div className="p-1.5 rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+            <Icon size={14} />
+          </div>
           <span className="text-xs font-bold tracking-wide uppercase">{title}</span>
           {badge && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
               {badge}
             </span>
           )}
         </div>
-        <div className="text-on-surface-variant/70 group-hover:text-on-surface transition-colors">
-          {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+        <div className="text-on-surface-variant/70 group-hover:text-on-surface transition-colors p-1 rounded-md">
+          {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </div>
       </button>
       {isOpen && (
-        <div className="p-3.5 space-y-3.5 border-t border-outline-variant/20">
+        <div className="p-4 space-y-4 border-t border-outline-variant/20">
           {children}
         </div>
       )}
-    </div>
-  );
-};
-
-const AdvancedColorPicker = ({ 
-  value, 
-  onChange, 
-  presets, 
-  allowTransparent = false 
-}: { 
-  value: string; 
-  onChange: (c: string) => void; 
-  presets: string[]; 
-  allowTransparent?: boolean;
-}) => {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2 bg-surface-container/50 p-1.5 rounded-lg border border-outline-variant/30">
-        <div 
-          className="relative w-7 h-7 rounded-md shadow-xs border border-outline-variant/50 overflow-hidden flex-shrink-0" 
-          style={{ 
-            background: value === 'transparent'
-              ? 'repeating-conic-gradient(#cbd5e1 0% 25%, transparent 0% 50%) 50% / 8px 8px'
-              : value
-          }}
-        >
-          <input 
-            type="color" 
-            value={value === 'transparent' ? '#000000' : value} 
-            onChange={(e) => onChange(e.target.value)} 
-            className="absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 opacity-0 cursor-pointer"
-            title="Custom Color Picker"
-          />
-        </div>
-        
-        <div className="flex-1 flex items-center justify-between gap-1 min-w-0">
-          <input 
-            type="text"
-            value={value === 'transparent' ? 'TRANSPARENT' : value.toUpperCase()}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === 'transparent' || val.startsWith('#')) {
-                onChange(val);
-              }
-            }}
-            className="text-[11px] font-mono font-bold text-on-surface bg-transparent border-none p-0 focus:outline-none w-24"
-          />
-
-          {allowTransparent && (
-            <button
-              onClick={() => onChange(value === 'transparent' ? '#000000' : 'transparent')}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-all ${
-                value === 'transparent' 
-                  ? 'border-primary text-primary bg-primary/10' 
-                  : 'border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high'
-              }`}
-            >
-              None
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Preset Swatches */}
-      <div className="grid grid-cols-9 gap-1 pt-1">
-        {presets.map(c => (
-          <button
-            key={c}
-            onClick={() => onChange(c)}
-            className={`w-5 h-5 rounded-md border transition-all ${
-              value === c 
-                ? 'border-primary scale-110 shadow-sm ring-1 ring-primary/40' 
-                : 'border-outline-variant/30 hover:scale-105'
-            }`}
-            style={{ backgroundColor: c }}
-            title={c}
-          />
-        ))}
-      </div>
     </div>
   );
 };
@@ -164,8 +95,6 @@ export const SidebarRight: React.FC = () => {
     setTextColor,
     fontFamily,
     setFontFamily,
-    fontSize,
-    setFontSize,
     strokeColor,
     setStrokeColor,
     fillColor,
@@ -209,7 +138,32 @@ export const SidebarRight: React.FC = () => {
     '#d97706',
     '#7c3aed',
     '#0891b2',
+    '#ec4899',
+    '#6366f1',
+    '#14b8a6',
   ];
+
+  const handleLayerUp = () => {
+    if (!selectedElement) return;
+    const index = elements.findIndex(el => el.id === selectedElement.id);
+    if (index === elements.length - 1) return;
+    const newElements = [...elements];
+    const temp = newElements[index];
+    newElements[index] = newElements[index + 1];
+    newElements[index + 1] = temp;
+    useEditorStore.setState({ elements: newElements });
+  };
+
+  const handleLayerDown = () => {
+    if (!selectedElement) return;
+    const index = elements.findIndex(el => el.id === selectedElement.id);
+    if (index === 0) return;
+    const newElements = [...elements];
+    const temp = newElements[index];
+    newElements[index] = newElements[index - 1];
+    newElements[index - 1] = temp;
+    useEditorStore.setState({ elements: newElements });
+  };
 
   const isMobileOpen = mobileSidebarOpen === 'right';
   const mobileClasses = isMobileOpen 
@@ -217,21 +171,31 @@ export const SidebarRight: React.FC = () => {
     : 'hidden md:flex md:relative md:translate-x-0';
   const asideStyle = layoutMode === 'horizontal' ? {} : { width: `${rightSidebarWidth}px` };
 
-  // If no element selected, render Workspace Defaults & Shape Library inspector
+  // IF NO ELEMENT IS SELECTED -> Render Inspector Workspace Defaults & Shape Library
   if (!selectedElement) {
     return (
       <aside 
-        className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'flex-1 h-full flex flex-col min-w-0 p-3.5 border-l' : 'h-[calc(100vh-4rem)] bg-surface border-l p-3.5'} border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full`}
+        className={`${mobileClasses} ${
+          layoutMode === 'horizontal' 
+            ? 'flex-1 h-full flex flex-col min-w-0 p-4 border-l' 
+            : 'h-[calc(100vh-4rem)] bg-surface border-l p-4'
+        } border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full custom-scrollbar`}
         style={asideStyle}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-3 flex-shrink-0">
-          <div className="flex items-center gap-2 text-on-surface">
-            <Settings size={15} className="text-primary" />
-            <span className="text-xs font-bold uppercase tracking-wider">Inspector</span>
+        <div className="flex items-center justify-between pb-3.5 border-b border-outline-variant/30 mb-4 flex-shrink-0">
+          <div className="flex items-center gap-2.5 text-on-surface">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <Sliders size={16} />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface">Inspector</h2>
+              <p className="text-[10px] text-on-surface-variant">Workspace defaults & shape tools</p>
+            </div>
           </div>
           {isMobileOpen && (
             <button
+              type="button"
               onClick={() => setMobileSidebarOpen(null)}
               className="md:hidden flex items-center justify-center w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface active:scale-90 transition-all"
               aria-label="Close panel"
@@ -241,7 +205,7 @@ export const SidebarRight: React.FC = () => {
           )}
         </div>
 
-        <div className="space-y-3.5">
+        <div className="space-y-4">
           {/* Active Drawing Tool Inspector */}
           {(activeTool === 'draw' || activeTool === 'erase') && (
             <CollapsibleSection title="Drawing Tools" icon={Pencil} defaultOpen={true}>
@@ -249,14 +213,16 @@ export const SidebarRight: React.FC = () => {
             </CollapsibleSection>
           )}
 
-          {/* Default Text Stylings */}
+          {/* Default Text & Shape Stylings */}
           <CollapsibleSection title="Workspace Defaults" icon={Settings} defaultOpen={true}>
             <div>
-              <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Default Font Family</label>
+              <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1.5">
+                Default Font Family
+              </label>
               <select
                 value={fontFamily}
                 onChange={(e) => setFontFamily(e.target.value)}
-                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface p-2 rounded-lg focus:outline-none focus:border-primary"
+                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface p-2.5 rounded-xl focus:outline-none focus:border-primary transition-colors cursor-pointer"
               >
                 {fontFamilies.map(f => (
                   <option key={f.value} value={f.value}>{f.label}</option>
@@ -265,30 +231,48 @@ export const SidebarRight: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Default Text Color</label>
-              <AdvancedColorPicker value={textColor} onChange={setTextColor} presets={presetColors} />
-            </div>
-
-            <div className="border-t border-outline-variant/20 pt-3">
-              <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Shape Stroke Width ({strokeWidth}px)</label>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={strokeWidth}
-                onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
-                className="w-full accent-primary"
+              <ColorPicker 
+                label="Default Text Color" 
+                value={textColor} 
+                onChange={setTextColor} 
+                presets={presetColors} 
               />
             </div>
 
-            <div>
-              <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Shape Stroke Color</label>
-              <AdvancedColorPicker value={strokeColor} onChange={setStrokeColor} presets={presetColors} />
-            </div>
+            <div className="border-t border-outline-variant/20 pt-3 space-y-3">
+              <div>
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold text-on-surface-variant mb-1.5">
+                  <span>Shape Stroke Width</span>
+                  <span className="text-primary font-mono">{strokeWidth}px</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="12"
+                  value={strokeWidth}
+                  onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
+                  className="w-full accent-primary h-1.5 cursor-pointer"
+                />
+              </div>
 
-            <div>
-              <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">Shape Fill Color</label>
-              <AdvancedColorPicker value={fillColor} onChange={setFillColor} presets={presetColors} allowTransparent />
+              <div>
+                <ColorPicker 
+                  label="Shape Stroke Color" 
+                  value={strokeColor} 
+                  onChange={setStrokeColor} 
+                  presets={presetColors} 
+                />
+              </div>
+
+              <div>
+                <ColorPicker 
+                  label="Shape Fill Color" 
+                  value={fillColor} 
+                  onChange={setFillColor} 
+                  presets={presetColors} 
+                  allowTransparent 
+                />
+              </div>
             </div>
           </CollapsibleSection>
 
@@ -304,21 +288,34 @@ export const SidebarRight: React.FC = () => {
   // ELEMENT SELECTED INSPECTOR
   return (
     <aside 
-      className={`${mobileClasses} ${layoutMode === 'horizontal' ? 'flex-1 h-full flex flex-col min-w-0 p-3.5 border-l' : 'h-[calc(100vh-4rem)] bg-surface border-l p-3.5'} border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full`}
+      className={`${mobileClasses} ${
+        layoutMode === 'horizontal' 
+          ? 'flex-1 h-full flex flex-col min-w-0 p-4 border-l' 
+          : 'h-[calc(100vh-4rem)] bg-surface border-l p-4'
+      } border-outline-variant/30 z-30 select-none overflow-y-auto max-w-full custom-scrollbar`}
       style={asideStyle}
     >
-      {/* Selection Bar */}
-      <div className="flex items-center justify-between pb-3 border-b border-outline-variant/30 mb-3 flex-shrink-0">
-        <div className="flex items-center gap-2 text-on-surface min-w-0">
-          <Sliders size={15} className="text-primary flex-shrink-0" />
-          <span className="text-xs font-bold uppercase tracking-wider truncate">
-            {selectedElement.type} Properties
-          </span>
+      {/* Header / Selection Bar */}
+      <div className="flex items-center justify-between pb-3.5 border-b border-outline-variant/30 mb-4 flex-shrink-0">
+        <div className="flex items-center gap-2.5 text-on-surface min-w-0">
+          <div className="p-1.5 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+            <SlidersHorizontal size={16} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface truncate">
+              {selectedElement.type} Properties
+            </h2>
+            <span className="text-[10px] text-on-surface-variant block truncate">
+              ID: {selectedElement.id}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Action Controls Toolbar */}
+        <div className="flex items-center gap-1">
           {/* Quick Duplicate */}
           <button
+            type="button"
             onClick={() => {
               addElement({
                 ...selectedElement,
@@ -326,7 +323,7 @@ export const SidebarRight: React.FC = () => {
                 y: Math.min(selectedElement.y + 3, 90),
               });
             }}
-            className="p-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition"
+            className="p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface active:scale-95 transition-all border border-outline-variant/30"
             title="Duplicate Element"
           >
             <Copy size={14} />
@@ -334,8 +331,9 @@ export const SidebarRight: React.FC = () => {
 
           {/* Quick Delete */}
           <button
+            type="button"
             onClick={() => deleteElement(selectedElement.id)}
-            className="p-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-error hover:bg-error/10 transition"
+            className="p-2 rounded-xl bg-surface-container text-on-surface-variant hover:text-error hover:bg-error/10 active:scale-95 transition-all border border-outline-variant/30"
             title="Delete Element"
           >
             <Trash2 size={14} />
@@ -343,80 +341,27 @@ export const SidebarRight: React.FC = () => {
 
           {isMobileOpen && (
             <button
+              type="button"
               onClick={() => setMobileSidebarOpen(null)}
-              className="md:hidden flex items-center justify-center w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant"
+              className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant"
               aria-label="Close panel"
             >
-              <X size={14} strokeWidth={2.5} />
+              <X size={15} strokeWidth={2.5} />
             </button>
           )}
         </div>
       </div>
 
-      <div className="space-y-3.5">
-        {/* COLLAPSIBLE SECTION 1: Transform & Position */}
-        <CollapsibleSection title="Transform & Position" icon={Move} defaultOpen={true}>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <span className="text-[10px] font-bold text-on-surface-variant block mb-1">Width (px)</span>
-              <input
-                type="number"
-                value={Math.round(selectedElement.width)}
-                onChange={(e) => updateElement(selectedElement.id, { width: Math.max(parseFloat(e.target.value) || 1, 1) })}
-                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface p-1.5 rounded-lg focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-on-surface-variant block mb-1">Height (px)</span>
-              <input
-                type="number"
-                value={Math.round(selectedElement.height)}
-                onChange={(e) => updateElement(selectedElement.id, { height: Math.max(parseFloat(e.target.value) || 1, 1) })}
-                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface p-1.5 rounded-lg focus:outline-none focus:border-primary"
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between text-[10px] font-bold text-on-surface-variant mb-1">
-              <span>Rotation</span>
-              <span>{selectedElement.rotation || 0}°</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="360"
-              value={selectedElement.rotation || 0}
-              onChange={(e) => updateElement(selectedElement.id, { rotation: parseInt(e.target.value) })}
-              className="w-full accent-primary"
-            />
-          </div>
-
-          <div>
-            <div className="flex justify-between text-[10px] font-bold text-on-surface-variant mb-1">
-              <span>Opacity</span>
-              <span>{Math.round((selectedElement.opacity || 1) * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={Math.round((selectedElement.opacity || 1) * 100)}
-              onChange={(e) => updateElement(selectedElement.id, { opacity: parseInt(e.target.value) / 100 })}
-              className="w-full accent-primary"
-            />
-          </div>
-        </CollapsibleSection>
-
-        {/* COLLAPSIBLE SECTION 2: Text Properties */}
+      <div className="space-y-4">
+        {/* SECTION: TEXT TYPOGRAPHY */}
         {selectedElement.type === 'text' && (
           <CollapsibleSection title="Typography" icon={Type} defaultOpen={true}>
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1">Font Family</label>
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Font Family</label>
               <select
                 value={selectedElement.fontFamily || 'Helvetica'}
                 onChange={(e) => updateElement(selectedElement.id, { fontFamily: e.target.value })}
-                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface p-2 rounded-lg focus:outline-none focus:border-primary"
+                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface p-2.5 rounded-xl focus:outline-none focus:border-primary transition-colors cursor-pointer"
               >
                 {fontFamilies.map(f => (
                   <option key={f.value} value={f.value}>{f.label}</option>
@@ -425,83 +370,104 @@ export const SidebarRight: React.FC = () => {
             </div>
 
             <div>
-              <div className="flex justify-between text-[10px] font-bold text-on-surface-variant mb-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">
                 <span>Font Size</span>
-                <span>{selectedElement.fontSize || 14}px</span>
+                <span className="text-primary font-mono bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                  {selectedElement.fontSize || 14}px
+                </span>
               </div>
-              <input
-                type="range"
-                min="6"
-                max="72"
-                value={selectedElement.fontSize || 14}
-                onChange={(e) => updateElement(selectedElement.id, { fontSize: parseInt(e.target.value) })}
-                className="w-full accent-primary"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="6"
+                  max="96"
+                  value={selectedElement.fontSize || 14}
+                  onChange={(e) => updateElement(selectedElement.id, { fontSize: parseInt(e.target.value) || 12 })}
+                  className="flex-1 accent-primary h-1.5 cursor-pointer"
+                />
+                <input
+                  type="number"
+                  min="6"
+                  max="200"
+                  value={selectedElement.fontSize || 14}
+                  onChange={(e) => updateElement(selectedElement.id, { fontSize: Math.max(parseFloat(e.target.value) || 6, 6) })}
+                  className="w-14 bg-surface-container border border-outline-variant/30 text-xs font-mono font-bold text-on-surface p-1.5 rounded-lg text-center focus:outline-none focus:border-primary"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1.5">Style</label>
-              <div className="flex gap-1.5">
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Font Style</label>
+              <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => updateElement(selectedElement.id, { fontWeight: selectedElement.fontWeight === 'bold' ? 'normal' : 'bold' })}
-                  className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                  className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                     selectedElement.fontWeight === 'bold' 
-                      ? 'bg-primary/10 border-primary/40 text-primary shadow-xs' 
+                      ? 'bg-primary/10 border-primary/40 text-primary shadow-2xs' 
                       : 'bg-surface-container border-outline-variant/30 text-on-surface-variant hover:text-on-surface'
                   }`}
                   title="Bold"
                 >
                   <Bold size={14} />
+                  <span>Bold</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => updateElement(selectedElement.id, { fontStyle: selectedElement.fontStyle === 'italic' ? 'normal' : 'italic' })}
-                  className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                  className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                     selectedElement.fontStyle === 'italic' 
-                      ? 'bg-primary/10 border-primary/40 text-primary shadow-xs' 
+                      ? 'bg-primary/10 border-primary/40 text-primary shadow-2xs' 
                       : 'bg-surface-container border-outline-variant/30 text-on-surface-variant hover:text-on-surface'
                   }`}
                   title="Italic"
                 >
                   <Italic size={14} />
+                  <span>Italic</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => updateElement(selectedElement.id, { textDecoration: selectedElement.textDecoration === 'underline' ? 'none' : 'underline' })}
-                  className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                  className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1 ${
                     selectedElement.textDecoration === 'underline' 
-                      ? 'bg-primary/10 border-primary/40 text-primary shadow-xs' 
+                      ? 'bg-primary/10 border-primary/40 text-primary shadow-2xs' 
                       : 'bg-surface-container border-outline-variant/30 text-on-surface-variant hover:text-on-surface'
                   }`}
                   title="Underline"
                 >
                   <Underline size={14} />
+                  <span>Underline</span>
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1.5">Alignment</label>
-              <div className="flex bg-surface-container p-1 rounded-lg border border-outline-variant/30">
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Text Alignment</label>
+              <div className="flex bg-surface-container p-1 rounded-xl border border-outline-variant/30">
                 {(['left', 'center', 'right', 'justify'] as const).map((align) => {
                   const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : align === 'right' ? AlignRight : AlignJustify;
                   const isActive = selectedElement.align === align;
                   return (
                     <button
                       key={align}
+                      type="button"
                       onClick={() => updateElement(selectedElement.id, { align })}
-                      className={`flex-1 py-1 flex justify-center rounded-md transition-all ${
-                        isActive ? 'bg-surface text-primary shadow-xs font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                      className={`flex-1 py-1.5 flex justify-center items-center rounded-lg transition-all ${
+                        isActive ? 'bg-surface text-primary shadow-2xs font-bold' : 'text-on-surface-variant hover:text-on-surface'
                       }`}
+                      title={`Align ${align}`}
                     >
-                      <Icon size={14} />
+                      <Icon size={15} />
                     </button>
                   );
                 })}
               </div>
             </div>
 
+            {/* Direct HEX Text Color Picker */}
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1">Text Color</label>
-              <AdvancedColorPicker 
+              <ColorPicker 
+                label="Text Color" 
                 value={selectedElement.color || '#000000'} 
                 onChange={(c) => updateElement(selectedElement.id, { color: c })} 
                 presets={presetColors} 
@@ -510,17 +476,19 @@ export const SidebarRight: React.FC = () => {
           </CollapsibleSection>
         )}
 
-        {/* COLLAPSIBLE SECTION 3: Image / Signature Adjustments */}
+        {/* SECTION: IMAGE / SIGNATURE ADJUSTMENTS */}
         {(selectedElement.type === 'image' || selectedElement.type === 'signature') && (
-          <CollapsibleSection title="Image Adjustments" icon={ImageIcon} defaultOpen={true}>
+          <CollapsibleSection title="Image & Filters" icon={ImageIcon} defaultOpen={true}>
             <ImagePropertiesPanel element={selectedElement} />
             <button
+              type="button"
               onClick={() => {
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = 'image/*';
-                input.onchange = (event: any) => {
-                  const file = event.target.files?.[0];
+                input.onchange = (event: Event) => {
+                  const target = event.target as HTMLInputElement;
+                  const file = target.files?.[0];
                   if (file) {
                     const reader = new FileReader();
                     reader.onload = () => {
@@ -531,40 +499,40 @@ export const SidebarRight: React.FC = () => {
                 };
                 input.click();
               }}
-              className="w-full py-2 flex items-center justify-center gap-1.5 bg-surface-container border border-outline-variant/30 hover:bg-surface-container-high text-xs font-bold text-on-surface rounded-lg transition"
+              className="w-full py-2.5 flex items-center justify-center gap-2 bg-surface-container border border-outline-variant/30 hover:bg-surface-container-high active:scale-98 text-xs font-bold text-on-surface rounded-xl transition-all shadow-2xs mt-2"
             >
-              <ImageIcon size={14} />
+              <ImageIcon size={15} className="text-primary" />
               <span>Replace Image File</span>
             </button>
           </CollapsibleSection>
         )}
 
-        {/* COLLAPSIBLE SECTION 4: Shape & Border */}
+        {/* SECTION: SHAPE & BORDER */}
         {selectedElement.type === 'shape' && (
           <CollapsibleSection title="Shape & Border" icon={Square} defaultOpen={true}>
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1.5">Change Shape</label>
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Change Shape</label>
               <ShapePicker />
             </div>
 
             <div>
-              <div className="flex justify-between text-[10px] font-bold text-on-surface-variant mb-1">
+              <div className="flex justify-between items-center text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">
                 <span>Border Weight</span>
-                <span>{selectedElement.strokeWidth || 2}px</span>
+                <span className="text-primary font-mono">{selectedElement.strokeWidth || 2}px</span>
               </div>
               <input
                 type="range"
                 min="1"
-                max="12"
+                max="16"
                 value={selectedElement.strokeWidth || 2}
                 onChange={(e) => updateElement(selectedElement.id, { strokeWidth: parseInt(e.target.value) })}
-                className="w-full accent-primary"
+                className="w-full accent-primary h-1.5 cursor-pointer"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1.5">Border Style</label>
-              <div className="flex gap-1.5">
+              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">Border Pattern</label>
+              <div className="flex gap-2">
                 {[
                   { label: 'Solid', dash: undefined },
                   { label: 'Dashed', dash: [6, 4] },
@@ -574,10 +542,11 @@ export const SidebarRight: React.FC = () => {
                   return (
                     <button
                       key={opt.label}
+                      type="button"
                       onClick={() => updateElement(selectedElement.id, { borderDash: opt.dash as any })}
-                      className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                      className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${
                         isActive
-                          ? 'bg-primary/10 border-primary/40 text-primary shadow-xs'
+                          ? 'bg-primary/10 border-primary/40 text-primary shadow-2xs'
                           : 'bg-surface-container border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high'
                       }`}
                     >
@@ -590,12 +559,12 @@ export const SidebarRight: React.FC = () => {
           </CollapsibleSection>
         )}
 
-        {/* COLLAPSIBLE SECTION 5: Stroke & Fill */}
+        {/* SECTION: STROKE & FILL COLORS (SHAPES & DRAWINGS) */}
         {(selectedElement.type === 'shape' || selectedElement.type === 'drawing') && (
-          <CollapsibleSection title="Stroke & Fill" icon={Palette} defaultOpen={true}>
+          <CollapsibleSection title="Colors & Fill" icon={Palette} defaultOpen={true}>
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1">Stroke Color</label>
-              <AdvancedColorPicker 
+              <ColorPicker 
+                label="Stroke Color" 
                 value={selectedElement.strokeColor || '#000000'} 
                 onChange={(c) => updateElement(selectedElement.id, { strokeColor: c })} 
                 presets={presetColors} 
@@ -604,8 +573,8 @@ export const SidebarRight: React.FC = () => {
             </div>
 
             <div>
-              <label className="text-[10px] font-bold text-on-surface-variant block mb-1">Fill Color</label>
-              <AdvancedColorPicker 
+              <ColorPicker 
+                label="Fill Color" 
                 value={selectedElement.fillColor || 'transparent'} 
                 onChange={(c) => updateElement(selectedElement.id, { fillColor: c })} 
                 presets={presetColors} 
@@ -614,6 +583,84 @@ export const SidebarRight: React.FC = () => {
             </div>
           </CollapsibleSection>
         )}
+
+        {/* SECTION: TRANSFORM & POSITION */}
+        <CollapsibleSection title="Transform & Position" icon={Move} defaultOpen={true}>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Width (px)</span>
+              <input
+                type="number"
+                value={Math.round(selectedElement.width)}
+                onChange={(e) => updateElement(selectedElement.id, { width: Math.max(parseFloat(e.target.value) || 1, 1) })}
+                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-mono font-bold text-on-surface p-2 rounded-xl focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1">Height (px)</span>
+              <input
+                type="number"
+                value={Math.round(selectedElement.height)}
+                onChange={(e) => updateElement(selectedElement.id, { height: Math.max(parseFloat(e.target.value) || 1, 1) })}
+                className="w-full bg-surface-container border border-outline-variant/30 text-xs font-mono font-bold text-on-surface p-2 rounded-xl focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
+              <span>Rotation</span>
+              <span className="text-primary font-mono">{selectedElement.rotation || 0}°</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="360"
+              value={selectedElement.rotation || 0}
+              onChange={(e) => updateElement(selectedElement.id, { rotation: parseInt(e.target.value) })}
+              className="w-full accent-primary h-1.5 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
+              <span>Opacity</span>
+              <span className="text-primary font-mono">{Math.round((selectedElement.opacity || 1) * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={Math.round((selectedElement.opacity || 1) * 100)}
+              onChange={(e) => updateElement(selectedElement.id, { opacity: parseInt(e.target.value) / 100 })}
+              className="w-full accent-primary h-1.5 cursor-pointer"
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* SECTION: LAYER & DEPTH */}
+        <CollapsibleSection title="Layering & Depth" icon={Layers} defaultOpen={false}>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleLayerUp}
+              className="flex-1 py-2 px-3 rounded-xl bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all flex items-center justify-center gap-1.5"
+              title="Bring Forward"
+            >
+              <ArrowUp size={14} className="text-primary" />
+              <span>Bring Forward</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLayerDown}
+              className="flex-1 py-2 px-3 rounded-xl bg-surface-container border border-outline-variant/30 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all flex items-center justify-center gap-1.5"
+              title="Send Backward"
+            >
+              <ArrowDown size={14} className="text-primary" />
+              <span>Send Backward</span>
+            </button>
+          </div>
+        </CollapsibleSection>
       </div>
     </aside>
   );

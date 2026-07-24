@@ -206,8 +206,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   zoomPanelPos: null,
   zoomPanelLocked: true,
   zoomPanelSize: 'md',
-  leftSidebarWidth: 260,
-  rightSidebarWidth: 320,
+  leftSidebarWidth: 280,
+  rightSidebarWidth: 360,
   bottomDockHeight: 288,
   mobileSidebarOpen: null,
 
@@ -590,3 +590,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   resetHistory: () => set({ past: [], future: [] })
 }));
+
+if (typeof window !== 'undefined') {
+  (window as any).useEditorStore = useEditorStore;
+}

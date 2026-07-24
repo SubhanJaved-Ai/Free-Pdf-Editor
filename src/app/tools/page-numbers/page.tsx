@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { Navbar } from '../../../components/layout/Navbar';
 import { Footer } from '../../../components/layout/Footer';
+import { ColorPicker } from '../../../components/editor/ColorPicker';
 
 import { UploadCloud, File as FileIcon, Download, Loader2, Type, X } from 'lucide-react';
 
@@ -176,8 +177,7 @@ export default function PageNumbersPage() {
 
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <label className="block text-sm font-semibold text-on-surface mb-2">Color</label>
-                      <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="w-full h-12 rounded-lg cursor-pointer border-0 bg-transparent p-0" />
+                      <ColorPicker label="Color" value={color} onChange={setColor} />
                     </div>
                     <div className="flex-1">
                       <label className="block text-sm font-semibold text-on-surface mb-2">Opacity ({Math.round(opacity * 100)}%)</label>
