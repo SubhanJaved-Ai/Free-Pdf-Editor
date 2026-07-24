@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react'
 import { useEditorStore, EditorElement } from '../../store/useEditorStore';
 import { FloatingToolbar } from './FloatingToolbar';
 import { renderShapeSvgContent } from '../../utils/shapeDefinitions';
+import { loadWebFontIfNeeded, getFontFallbackStack } from '../../utils/fontLoader';
 
 interface EditorPageProps {
   pageIndex: number;
@@ -739,6 +740,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
 
   return (
     <div 
+      id={`page-container-${pageIndex}`}
       className="relative flex justify-center py-6"
     >
       <div 
@@ -949,7 +951,11 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                       className={`w-full h-full cursor-text select-text outline-none border-none m-0 p-0 whitespace-pre-wrap break-words leading-tight min-h-[1em]`}
                       style={{
                         fontSize: `${el.fontSize || 14}px`,
-                        fontFamily: el.fontFamily || 'Helvetica',
+                        fontFamily: (() => {
+                          const fam = el.fontFamily || 'Helvetica';
+                          loadWebFontIfNeeded(fam);
+                          return getFontFallbackStack(fam);
+                        })(),
                         fontWeight: el.fontWeight || 'normal',
                         fontStyle: el.fontStyle || 'normal',
                         color: (isEditing || el.isModified || !el.isOriginalPdfElement) ? (el.color || '#000000') : 'transparent',

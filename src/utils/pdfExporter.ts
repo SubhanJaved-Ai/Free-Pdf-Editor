@@ -475,11 +475,29 @@ export async function exportEditedPdf(
 
       // ── Text ──────────────────────────────────────────────────────────────
       if (el.type === 'text' && el.text) {
+        const fam = (el.fontFamily || 'Helvetica').toLowerCase();
         let fontKey = 'Helvetica';
-        if (el.fontFamily === 'Courier New') fontKey = 'Courier';
-        else if (el.fontFamily === 'Times New Roman') fontKey = 'Times-Roman';
-        if (el.fontWeight === 'bold') fontKey = fontKey === 'Times-Roman' ? 'Times-Bold' : `${fontKey}-Bold`;
-        if (el.fontStyle === 'italic') fontKey = fontKey === 'Times-Roman' ? 'Times-Italic' : `${fontKey}-Oblique`;
+
+        if (fam.includes('courier') || fam.includes('mono') || fam.includes('code')) {
+          fontKey = 'Courier';
+        } else if (fam.includes('times') || fam.includes('roman') || fam.includes('georgia') || fam.includes('garamond') || fam.includes('palatino') || fam.includes('cambria') || fam.includes('serif')) {
+          fontKey = 'Times-Roman';
+        }
+
+        const isBold = el.fontWeight === 'bold';
+        const isItalic = el.fontStyle === 'italic';
+
+        if (fontKey === 'Times-Roman') {
+          if (isBold && isItalic) fontKey = 'Times-BoldItalic'; // fallback or Times-Bold
+          else if (isBold) fontKey = 'Times-Bold';
+          else if (isItalic) fontKey = 'Times-Italic';
+        } else if (fontKey === 'Courier') {
+          if (isBold) fontKey = 'Courier-Bold';
+          else if (isItalic) fontKey = 'Courier-Oblique';
+        } else { // Helvetica
+          if (isBold) fontKey = 'Helvetica-Bold';
+          else if (isItalic) fontKey = 'Helvetica-Oblique';
+        }
 
         const font = fontCache[fontKey] || fontCache['Helvetica'];
         const firstLineY = pageH - ((el.y / 100) * pageH) - (el.fontSize || 14) * 0.85;

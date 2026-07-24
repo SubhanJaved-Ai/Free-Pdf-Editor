@@ -110,23 +110,20 @@ export const SidebarRight: React.FC = () => {
 
   const selectedElement = elements.find(el => selectedElementIds.includes(el.id));
 
-  const fontFamilies = [
-    { value: 'Arial', label: 'Arial' },
-    { value: 'Helvetica', label: 'Helvetica' },
-    { value: 'Times New Roman', label: 'Times New Roman' },
-    { value: 'Georgia', label: 'Georgia' },
-    { value: 'Verdana', label: 'Verdana' },
-    { value: 'Tahoma', label: 'Tahoma' },
-    { value: 'Trebuchet MS', label: 'Trebuchet MS' },
-    { value: 'Calibri', label: 'Calibri' },
-    { value: 'Inter', label: 'Inter' },
-    { value: 'Poppins', label: 'Poppins' },
-    { value: 'Roboto', label: 'Roboto' },
-    { value: 'Open Sans', label: 'Open Sans' },
-    { value: 'Montserrat', label: 'Montserrat' },
-    { value: 'Merriweather', label: 'Merriweather' },
-    { value: 'Playfair Display', label: 'Playfair Display' },
-  ].sort((a, b) => a.label.localeCompare(b.label));
+  const baseFontFamilies = [
+    'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana',
+    'Tahoma', 'Trebuchet MS', 'Calibri', 'Cambria', 'Garamond', 'Palatino',
+    'Courier New', 'Inter', 'Poppins', 'Roboto', 'Open Sans',
+    'Montserrat', 'Merriweather', 'Playfair Display'
+  ];
+
+  if (selectedElement?.fontFamily && !baseFontFamilies.includes(selectedElement.fontFamily)) {
+    baseFontFamilies.push(selectedElement.fontFamily);
+  }
+
+  const fontFamilies = baseFontFamilies
+    .map(f => ({ value: f, label: f }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const presetColors = [
     '#000000',

@@ -147,6 +147,7 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
     pageOrders,
     currentPageIndex,
     setCurrentPageIndex,
+    scrollToPageIndexSignal,
     zoom,
     setZoom,
     activeTool,
@@ -165,9 +166,59 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const isProgrammaticScrollRef = useRef(false);
 
   // Memoize mobile detection to avoid recalculating in render loop
   const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth <= 768, []);
+
+  // 1. Listen for thumbnail / page navigation click signals and scroll smoothly to target page element
+  useEffect(() => {
+    if (!scrollToPageIndexSignal) return;
+    const { index } = scrollToPageIndexSignal;
+    const targetEl = document.getElementById(`page-container-${index}`);
+    if (targetEl && containerRef.current) {
+      isProgrammaticScrollRef.current = true;
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const timer = setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollToPageIndexSignal]);
+
+  // 2. Active Page Scroll Synchronization (updates sidebar active page highlight as user scrolls)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (isProgrammaticScrollRef.current) return;
+      const containerRect = container.getBoundingClientRect();
+      const containerCenter = containerRect.top + containerRect.height / 3;
+
+      let closestPageIdx = currentPageIndex;
+      let minDistance = Infinity;
+
+      pageOrders.forEach((pIdx) => {
+        const pageEl = document.getElementById(`page-container-${pIdx}`);
+        if (pageEl) {
+          const rect = pageEl.getBoundingClientRect();
+          const distance = Math.abs(rect.top - containerCenter);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestPageIdx = pIdx;
+          }
+        }
+      });
+
+      if (closestPageIdx !== useEditorStore.getState().currentPageIndex) {
+        useEditorStore.setState({ currentPageIndex: closestPageIdx });
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [pageOrders, currentPageIndex]);
 
   // Setup Keyboard Shortcuts (Figma/Adobe Standard)
   useEffect(() => {

@@ -1,5 +1,5 @@
-// Client-side PDF Parser utilizing pdfjs-dist
 import { EditorElement, PageDimension } from '../store/useEditorStore';
+import { parsePdfFontName } from './fontLoader';
 
 let pdfjsLib: any = null;
 
@@ -58,9 +58,18 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
       // item has str, transform, width, height, fontName
       if (!item.str || item.str.trim() === '') return;
       
+      // Look up real font object in page.commonObjs if available
+      let rawFontName = item.fontName;
+      if (page.commonObjs && typeof page.commonObjs.has === 'function' && page.commonObjs.has(item.fontName)) {
+        const fontObj = page.commonObjs.get(item.fontName);
+        if (fontObj) {
+          rawFontName = fontObj.name || fontObj.fallbackName || item.fontName;
+        }
+      }
+
+      const fontDetails = parsePdfFontName(rawFontName);
+      
       // Transform matrix coordinates [scaleX, skewY, skewX, scaleY, translateX, translateY]
-      // In PDF coordinates, origin is bottom-left.
-      // pdfjs-dist viewport converts coordinates to top-left for us.
       const tx = item.transform[4];
       const ty = item.transform[5];
       
@@ -69,32 +78,28 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
       
       // Bounding box dimensions
       const itemHeight = Math.abs(item.transform[3] || 12);
-      // Average width estimation if item.width is not set
       const itemWidth = item.width || (item.str.length * itemHeight * 0.6);
       
       // Create text element for overlay visual editing
       const elementId = `orig-${pageIndex}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Check for RTL text or specific languages
       const isRtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(item.str);
       
       elements.push({
         id: elementId,
         pageIndex,
         type: 'text',
-        // Convert to percentage coordinates for fluid scaling
         x: (x / width) * 100,
-        y: ((y - itemHeight) / height) * 100, // adjust y slightly to top-left alignment
+        y: ((y - itemHeight) / height) * 100,
         width: (itemWidth / width) * 100,
         height: (itemHeight / height) * 100,
         rotation: 0,
         opacity: 1.0,
         text: item.str,
         fontSize: itemHeight,
-        fontFamily: translateFontFamily(item.fontName),
-        fontWeight: item.fontName?.toLowerCase().includes('bold') ? 'bold' : 'normal',
-        fontStyle: item.fontName?.toLowerCase().includes('italic') ? 'italic' : 'normal',
-        color: '#000000', // default black, pdfjs-dist doesn't extract color easily in getTextContent, we'll let user change it
+        fontFamily: fontDetails.fontFamily,
+        fontWeight: fontDetails.fontWeight,
+        fontStyle: fontDetails.fontStyle,
+        color: '#000000',
         align: isRtl ? 'right' : 'left',
         isOriginalPdfElement: true,
         isModified: false,

@@ -71,6 +71,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
     pageOrders,
     currentPageIndex,
     setCurrentPageIndex,
+    scrollToPageIndex,
     duplicatePageInState,
     deletePageInState,
     insertBlankPageInState,
@@ -173,7 +174,7 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
           return (
             <div
               key={`${pageIdx}-${visualIdx}`}
-              onClick={() => setCurrentPageIndex(pageIdx)}
+              onClick={() => scrollToPageIndex(pageIdx)}
               className={`group flex flex-col items-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer relative ${
                 isSelected 
                   ? 'bg-primary/5 border-primary shadow-md ring-2 ring-primary/30' 

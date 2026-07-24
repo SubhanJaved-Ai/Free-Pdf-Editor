@@ -78,6 +78,7 @@ interface EditorState {
   totalPages: number;
   pageDimensions: PageDimension[];
   currentPageIndex: number;
+  scrollToPageIndexSignal: { index: number; timestamp: number } | null;
   pageOrders: number[]; // e.g. [0, 1, 2] -> can be reordered
   
   // Layout & UI State
@@ -134,6 +135,7 @@ interface EditorState {
   // Document level operations
   setPdf: (url: string | null, bytes: Uint8Array | null, name: string | null, dimensions: PageDimension[]) => void;
   setCurrentPageIndex: (index: number) => void;
+  scrollToPageIndex: (index: number) => void;
   setPageOrders: (orders: number[]) => void;
   duplicatePageInState: (pageIndex: number) => void;
   deletePageInState: (pageIndex: number) => void;
@@ -199,6 +201,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   totalPages: 0,
   pageDimensions: [],
   currentPageIndex: 0,
+  scrollToPageIndexSignal: null,
   pageOrders: [],
   
   // Initial Layout & UI State
@@ -277,6 +280,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setMobileSidebarOpen: (side) => set({ mobileSidebarOpen: side }),
   
   setCurrentPageIndex: (index) => set({ currentPageIndex: index }),
+  scrollToPageIndex: (index) => set({ 
+    currentPageIndex: index, 
+    scrollToPageIndexSignal: { index, timestamp: Date.now() } 
+  }),
   
   setPageOrders: (orders) => {
     // Record history
