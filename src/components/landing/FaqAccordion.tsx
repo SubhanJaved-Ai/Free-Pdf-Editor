@@ -40,45 +40,45 @@ export function FaqAccordion() {
 
   return (
     <div className="w-full max-w-3xl mx-auto my-16" id="faq">
-      <div className="text-center mb-10">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-xs font-semibold uppercase tracking-wider mb-3">
-          <HelpCircle size={13} /> Common Questions
+      <div className="text-center mb-8">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold uppercase tracking-wider mb-2">
+          <HelpCircle size={13} strokeWidth={2} /> Common Questions
         </span>
-        <h2 className="text-3xl md:text-4xl font-bold text-on-surface tracking-tight">
+        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
           Frequently Asked Questions
         </h2>
-        <p className="text-on-surface-variant text-base max-w-md mx-auto mt-2">
-          Everything you need to know about AetherPDF security, features, and performance.
+        <p className="text-slate-600 text-sm max-w-md mx-auto mt-1">
+          Everything you need to know about security, features, and performance.
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {FAQ_ITEMS.map((item, index) => {
           const isOpen = openIndex === index;
           return (
             <div 
               key={index}
-              className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
+              className={`rounded-xl border transition-all duration-200 overflow-hidden ${
                 isOpen 
-                  ? 'bg-white border-primary/40 shadow-md shadow-primary/5' 
-                  : 'bg-surface/60 hover:bg-white border-outline-variant/50 hover:border-outline-variant'
+                  ? 'bg-white border-indigo-200 shadow-sm' 
+                  : 'bg-white hover:bg-slate-50 border-slate-200'
               }`}
             >
               <button
                 onClick={() => toggleIndex(index)}
-                className="w-full px-6 py-5 flex items-center justify-between text-left gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
+                className="w-full px-5 py-4 flex items-center justify-between text-left gap-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-xl"
                 aria-expanded={isOpen}
               >
-                <span className="font-semibold text-on-surface text-base md:text-lg">
+                <span className="font-semibold text-slate-900 text-sm md:text-base">
                   {item.question}
                 </span>
-                <div className={`p-1.5 rounded-full bg-surface-container transition-transform duration-300 ${isOpen ? 'rotate-180 bg-primary/10 text-primary' : 'text-on-surface-variant'}`}>
-                  <ChevronDown size={18} />
+                <div className={`p-1 rounded-full transition-transform duration-200 ${isOpen ? 'rotate-180 bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}>
+                  <ChevronDown size={16} strokeWidth={2} />
                 </div>
               </button>
               
               {isOpen && (
-                <div className="px-6 pb-6 pt-1 text-on-surface-variant text-sm md:text-base leading-relaxed border-t border-outline-variant/20 animate-fade-up">
+                <div className="px-5 pb-5 pt-1 text-slate-600 text-xs md:text-sm leading-relaxed border-t border-slate-100">
                   {item.answer}
                 </div>
               )}
