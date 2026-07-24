@@ -52,7 +52,6 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
     setLayoutMode,
     isOcrRunning,
     ocrProgress,
-    signatures,
     addSignature,
     mobileSidebarOpen,
     setMobileSidebarOpen
@@ -469,8 +468,8 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
                               onMouseMove={handleDrawMove}
                               onMouseUp={handleDrawEnd}
                               onMouseLeave={handleDrawEnd}
-                              onTouchStart={(e) => { e.preventDefault(); handleDrawStart(e as any); }}
-                              onTouchMove={(e) => { e.preventDefault(); handleDrawMove(e as any); }}
+                              onTouchStart={(e) => { e.preventDefault(); handleDrawStart(e as unknown as React.MouseEvent<HTMLCanvasElement>); }}
+                              onTouchMove={(e) => { e.preventDefault(); handleDrawMove(e as unknown as React.MouseEvent<HTMLCanvasElement>); }}
                               onTouchEnd={(e) => { e.preventDefault(); handleDrawEnd(); }}
                             />
                             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 h-px w-4/5 bg-zinc-300 pointer-events-none" />

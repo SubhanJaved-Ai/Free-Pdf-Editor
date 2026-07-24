@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useEditorStore, EditorElement } from '../../store/useEditorStore';
+import { useEditorStore } from '../../store/useEditorStore';
 import { ImagePropertiesPanel } from './ImagePropertiesPanel';
 import { ShapePicker } from './ShapePicker';
 import { DrawingToolsPanel } from './DrawingToolsPanel';
@@ -15,7 +15,6 @@ import {
   AlignCenter, 
   AlignRight, 
   AlignJustify,
-  Maximize2,
   Trash2,
   Sliders,
   Palette,
@@ -25,10 +24,7 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  Layers,
   Move,
-  RotateCw,
-  Eye,
   Copy
 } from 'lucide-react';
 

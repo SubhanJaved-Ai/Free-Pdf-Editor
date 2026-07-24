@@ -13,16 +13,16 @@ const PageThumbnail: React.FC<PageThumbnailProps> = React.memo(({ pdfDoc, pageId
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    let renderTask: any = null;
+    let renderTask: unknown = null;
     let isCancelled = false;
 
     async function renderPage() {
       if (!pdfDoc || !canvasRef.current) return;
       try {
-        const page = await pdfDoc.getPage(pageIdx + 1);
+        const page = await (pdfDoc as { getPage: (n: number) => Promise<unknown> }).getPage(pageIdx + 1);
         if (isCancelled) return;
 
-        const viewport = page.getViewport({ scale: 0.25 });
+        const viewport = (page as { getViewport: (opt: { scale: number }) => { width: number; height: number } }).getViewport({ scale: 0.25 });
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
         if (!context) return;
@@ -30,14 +30,14 @@ const PageThumbnail: React.FC<PageThumbnailProps> = React.memo(({ pdfDoc, pageId
         canvas.width = viewport.width;
         canvas.height = viewport.height;
 
-        renderTask = page.render({
+        renderTask = (page as { render: (opt: unknown) => { promise: Promise<void>; cancel: () => void } }).render({
           canvasContext: context,
           viewport: viewport
         });
         
-        await renderTask.promise;
-      } catch (err: any) {
-        if (err.name !== 'RenderingCancelledException') {
+        await (renderTask as { promise: Promise<void> }).promise;
+      } catch (err: unknown) {
+        if ((err as { name?: string })?.name !== 'RenderingCancelledException') {
           console.error(`Error rendering thumbnail page ${pageIdx}:`, err);
         }
       }
@@ -48,7 +48,7 @@ const PageThumbnail: React.FC<PageThumbnailProps> = React.memo(({ pdfDoc, pageId
     return () => {
       isCancelled = true;
       if (renderTask) {
-        renderTask.cancel();
+        (renderTask as { cancel: () => void }).cancel();
       }
     };
   }, [pdfDoc, pageIdx]);
@@ -60,9 +60,10 @@ const PageThumbnail: React.FC<PageThumbnailProps> = React.memo(({ pdfDoc, pageId
     />
   );
 });
+PageThumbnail.displayName = 'PageThumbnail';
 
 interface SidebarLeftProps {
-  pdfDoc: any;
+  pdfDoc: unknown;
 }
 
 export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
