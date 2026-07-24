@@ -864,9 +864,9 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                   }
                 }}
                 className={`absolute group pointer-events-auto ${
-                  isSelected && (activeTool === 'select' || activeTool === 'text')
+                  isSelected && (activeTool === 'select' || activeTool === 'text' || activeTool === 'image')
                     ? 'ring-1 ring-primary cursor-move z-20' 
-                    : (activeTool === 'select' || activeTool === 'text')
+                    : (activeTool === 'select' || activeTool === 'text' || activeTool === 'image')
                     ? 'hover:ring-1 hover:ring-primary/40 hover:bg-primary/[0.03] cursor-pointer z-10'
                     : ''
                 } ${
