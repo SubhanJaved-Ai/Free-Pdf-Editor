@@ -67,19 +67,39 @@ async function embedDataUriImage(pdfDoc: PDFDocument, dataUri: string) {
 
 /**
  * Processes replacement image to apply object-fit: cover, frame shape clipping (circle, rounded, custom path),
- * and image filters before embedding into exported PDF.
+ * and image filters before embedding into exported PDF. Preserves full natural resolution (300-600 DPI).
  */
 async function processImageForExport(el: EditorElement, targetWidthPx: number, targetHeightPx: number): Promise<string> {
   if (typeof window === 'undefined' || !el.src) return el.src || '';
+
+  const isCircle = el.clipShape === 'circle';
+  const isRounded = el.clipShape === 'rounded' || (el.cornerRadius && el.cornerRadius > 0);
+  const hasFilter = (el.brightness && el.brightness !== 100) ||
+                    (el.contrast && el.contrast !== 100) ||
+                    (el.saturation && el.saturation !== 100) ||
+                    (el.imgBlur && el.imgBlur > 0) ||
+                    (el.imgGrayscale && el.imgGrayscale > 0) ||
+                    (el.exposure && el.exposure !== 100) ||
+                    (el.warmth && el.warmth !== 100) ||
+                    el.flipH || el.flipV;
+  const objectFit = el.objectFit || (el.type === 'image' ? 'cover' : 'contain');
+  const requiresCoverFit = objectFit === 'cover';
+
+  // If no clipping, no filters, and no cover fit needed, bypass canvas to preserve 100% original raw image bytes losslessly
+  if (!isCircle && !isRounded && !el.clipPath && !hasFilter && !requiresCoverFit) {
+    return el.src;
+  }
 
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      // Use 2x resolution for high-DPI quality in PDF
-      const scale = 2;
-      const canvasW = Math.max(Math.round(targetWidthPx * scale), 20);
-      const canvasH = Math.max(Math.round(targetHeightPx * scale), 20);
+      // Preserve full natural resolution of the image (or target at least 300 DPI = 4x PDF points)
+      const naturalW = img.naturalWidth || 1000;
+      const naturalH = img.naturalHeight || 1000;
+
+      const canvasW = Math.max(naturalW, Math.round(targetWidthPx * 4));
+      const canvasH = Math.max(naturalH, Math.round(targetHeightPx * 4));
 
       const canvas = document.createElement('canvas');
       canvas.width = canvasW;
@@ -91,10 +111,10 @@ async function processImageForExport(el: EditorElement, targetWidthPx: number, t
         return;
       }
 
-      // 1. Frame Shape Clipping
-      const isCircle = el.clipShape === 'circle';
-      const isRounded = el.clipShape === 'rounded' || (el.cornerRadius && el.cornerRadius > 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
+      // 1. Frame Shape Clipping
       if (isCircle) {
         ctx.beginPath();
         const r = Math.min(canvasW, canvasH) / 2;
@@ -102,6 +122,7 @@ async function processImageForExport(el: EditorElement, targetWidthPx: number, t
         ctx.closePath();
         ctx.clip();
       } else if (isRounded) {
+        const scale = canvasW / (targetWidthPx || 1);
         const rad = Math.min((el.cornerRadius || 16) * scale, Math.min(canvasW, canvasH) / 2);
         ctx.beginPath();
         if (typeof ctx.roundRect === 'function') {
@@ -114,7 +135,6 @@ async function processImageForExport(el: EditorElement, targetWidthPx: number, t
       }
 
       // 2. Object Fit Scaling (cover vs contain vs stretch)
-      const objectFit = el.objectFit || (el.type === 'image' ? 'cover' : 'contain');
       let sx = 0, sy = 0, sWidth = img.naturalWidth, sHeight = img.naturalHeight;
       let dx = 0, dy = 0, dWidth = canvasW, dHeight = canvasH;
 
@@ -160,7 +180,7 @@ async function processImageForExport(el: EditorElement, targetWidthPx: number, t
       if (brightness !== 100) filterParts.push(`brightness(${brightness}%)`);
       if (contrast !== 100) filterParts.push(`contrast(${contrast}%)`);
       if (saturation !== 100) filterParts.push(`saturate(${saturation}%)`);
-      if (blur > 0) filterParts.push(`blur(${blur * scale}px)`);
+      if (blur > 0) filterParts.push(`blur(${blur * 2}px)`);
       if (grayscale > 0) filterParts.push(`grayscale(${grayscale}%)`);
       if (filterParts.length > 0) ctx.filter = filterParts.join(' ');
 

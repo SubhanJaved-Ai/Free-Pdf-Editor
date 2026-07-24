@@ -11,14 +11,12 @@ import {
   Image as ImageIcon, 
   PenTool, 
   Square,
-  Circle,
   Hand,
   Undo2, 
   Redo2, 
   Sparkles, 
   Download, 
   UploadCloud, 
-  Highlighter, 
   Eraser,
   Save,
   Upload,
@@ -28,7 +26,9 @@ import {
   Loader2,
   LayoutDashboard,
   Menu,
-  Sliders
+  Sliders,
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 
 interface ToolbarTopProps {
@@ -66,7 +66,7 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
   const [isDrawingSignature, setIsDrawingSignature] = React.useState(false);
   const drawPointsRef = React.useRef<{x: number; y: number}[]>([]);
   
-  // All 50 premium signature fonts — loaded via <link> in layout.tsx
+  // All 50 premium signature fonts
   const signatureFonts = [
     { name: 'Great Vibes', family: 'Great Vibes' },
     { name: 'Dancing Script', family: 'Dancing Script' },
@@ -93,7 +93,6 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
     { name: 'Mr Dafoe', family: 'Mr Dafoe' },
     { name: 'Berkshire Swash', family: 'Berkshire Swash' },
     { name: 'Petit Formal Script', family: 'Petit Formal Script' },
-    // Batch 2 — 25 additional premium fonts
     { name: 'Whisper', family: 'Whisper' },
     { name: 'Euphoria Script', family: 'Euphoria Script' },
     { name: 'Rouge Script', family: 'Rouge Script' },
@@ -148,16 +147,13 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
     const fontFamily = signatureFonts.find(f => f.name === selectedFont)?.family || 'Great Vibes';
     const fontStr = `80px "${fontFamily}"`;
     
-    // Explicitly load the exact font face before drawing
     try {
       await document.fonts.load(fontStr);
-      // Double-ensure: wait for all fonts to be ready
       await document.fonts.ready;
     } catch (err) {
       console.warn('Font preload warning:', err);
     }
     
-    // Small delay to guarantee rendering after load
     await new Promise(resolve => setTimeout(resolve, 50));
     
     ctx.font = fontStr;
@@ -166,7 +162,6 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
     ctx.textAlign = 'center';
     ctx.fillText(signatureText, 400, 125);
     
-    // Trim transparent edges for a tight signature image
     const imageData = ctx.getImageData(0, 0, 800, 250);
     let minX = 800, minY = 250, maxX = 0, maxY = 0;
     for (let y = 0; y < 250; y++) {
@@ -181,7 +176,6 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
       }
     }
     
-    // Add padding
     const pad = 10;
     minX = Math.max(0, minX - pad);
     minY = Math.max(0, minY - pad);
@@ -204,7 +198,6 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
         setIsSignatureOpen(false);
       }
     } else {
-      // Fallback: use full canvas
       const dataUrl = canvas.toDataURL('image/png');
       addSignature(dataUrl);
       setActiveTool('signature');
@@ -212,7 +205,6 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
     }
   };
 
-  // Drawing signature handlers
   const handleDrawStart = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasDrawRef.current;
     if (!canvas) return;
@@ -274,99 +266,330 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
     handleClearDraw();
   };
 
-  const tools = [
-    { id: 'select', label: 'Select', icon: Pointer, tip: 'Select and move elements' },
-    { id: 'pan', label: 'Pan', icon: Hand, tip: 'Pan and move canvas smoothly' },
-    { id: 'text', label: 'Text', icon: Type, tip: 'Edit and add text' },
-    { id: 'image', label: 'Image', icon: ImageIcon, tip: 'Upload and edit images' },
-    { id: 'signature', label: 'Signature', icon: PenTool, tip: 'Create or upload signatures' },
-    { id: 'shape', label: 'Shapes', icon: Square, tip: 'Insert shapes and lines' },
-    { id: 'draw', label: 'Draw', icon: Pencil, tip: 'Freehand drawing and annotations' },
-    { id: 'erase', label: 'Eraser', icon: Eraser, tip: 'Erase content from the page' },
+  const selectionTools = [
+    { id: 'select', label: 'Select', icon: Pointer, shortcut: 'V', tip: 'Select and edit elements (V)' },
+    { id: 'pan', label: 'Pan', icon: Hand, shortcut: 'H', tip: 'Pan document canvas (H)' },
+  ] as const;
+
+  const contentTools = [
+    { id: 'text', label: 'Text', icon: Type, shortcut: 'T', tip: 'Add or edit text (T)' },
+    { id: 'image', label: 'Image', icon: ImageIcon, shortcut: 'I', tip: 'Upload & insert image (I)' },
+    { id: 'signature', label: 'Signature', icon: PenTool, shortcut: 'S', tip: 'Create or drop signature (S)' },
+    { id: 'shape', label: 'Shape', icon: Square, shortcut: 'U', tip: 'Insert shape (U)' },
+    { id: 'draw', label: 'Draw', icon: Pencil, shortcut: 'P', tip: 'Freehand drawing (P)' },
+    { id: 'erase', label: 'Eraser', icon: Eraser, shortcut: 'E', tip: 'Erase content (E)' },
   ] as const;
 
   return (
-    <>
-    <header className="h-16 w-full bg-surface-container/95 md:bg-surface-container/80 md:backdrop-blur-xl border-b border-outline-variant/30 flex items-center justify-between px-2 md:px-4 lg:px-6 shadow-sm z-50 flex-shrink-0">
-      {/* Left side: Back & Branding */}
-      <div className="flex items-center gap-4">
+    <header className="h-16 w-full bg-surface-container-lowest/95 backdrop-blur-xl border-b border-outline-variant/30 flex items-center justify-between px-3 md:px-5 shadow-sm z-50 flex-shrink-0 select-none">
+      {/* LEFT SECTION: Branding & Document Info */}
+      <div className="flex items-center gap-3 min-w-0">
         {/* Mobile Left Sidebar Toggle */}
         <button
           onClick={() => setMobileSidebarOpen(mobileSidebarOpen === 'left' ? null : 'left')}
-          className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-on-surface hover:bg-surface-variant transition-colors"
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-on-surface hover:bg-surface-variant transition-colors"
+          aria-label="Toggle Pages Navigator"
         >
-          <Menu size={20} />
+          <Menu size={19} />
         </button>
 
+        {/* Back to Home Button */}
         <button 
           onClick={() => router.push('/')}
-          className="flex items-center gap-2 group text-on-surface-variant hover:text-on-surface transition-colors ml-2 md:ml-0"
-          title="Back to Home"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all group"
+          title="Back to Dashboard / Home"
         >
-          <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform duration-200 text-primary" />
-          <span className="text-xs font-semibold hidden md:inline">Home</span>
+          <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform text-primary" />
+          <span className="text-xs font-bold hidden lg:inline">Home</span>
         </button>
-        
-        <div className="h-6 w-px bg-outline-variant/30" />
-        
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded bg-gradient-to-tr from-primary via-primary-container to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-on-primary font-bold text-sm tracking-widest">V</span>
+
+        <div className="h-5 w-px bg-outline-variant/30 hidden sm:block" />
+
+        {/* Brand Logo & Name */}
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-primary via-primary-container to-secondary flex items-center justify-center shadow-md shadow-primary/20 flex-shrink-0">
+            <span className="text-on-primary font-black text-xs tracking-widest">V</span>
           </div>
-          <span className="font-display font-semibold text-lg tracking-tight text-on-surface hidden lg:inline">Veltis<span className="text-primary">PDF</span></span>
+          <span className="font-display font-bold text-base tracking-tight text-on-surface hidden xl:inline">
+            Veltis<span className="text-primary">PDF</span>
+          </span>
         </div>
-        
-        <div className="h-6 w-px bg-outline-variant/50 hidden md:block" />
-        
-        <div className="flex items-center gap-2 hidden md:flex">
-          <p className="text-sm font-medium text-on-surface-variant flex items-center gap-2 truncate max-w-[200px]">
-            {fileName || 'No Document'}
-          </p>
+
+        <div className="h-5 w-px bg-outline-variant/30 hidden md:block" />
+
+        {/* File Name & Auto-Save Badge */}
+        <div className="flex items-center gap-2 min-w-0 hidden md:flex">
+          <FileText size={15} className="text-on-surface-variant/70 flex-shrink-0" />
+          <span className="text-xs font-semibold text-on-surface truncate max-w-[140px] lg:max-w-[200px]" title={fileName || 'Document'}>
+            {fileName || 'Untitled Document.pdf'}
+          </span>
+          <SaveStatusIndicator />
         </div>
-        
+      </div>
+
+      {/* CENTER SECTION: Logically Grouped Tool Ribbon */}
+      <div className="flex items-center gap-1.5 md:gap-2 bg-surface-container/60 p-1 rounded-xl border border-outline-variant/30 shadow-inner max-w-full overflow-x-auto no-scrollbar">
+        {/* GROUP 1: Selection Tools */}
+        <div className="flex items-center gap-0.5 bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline-variant/20">
+          {selectionTools.map((tool) => {
+            const Icon = tool.icon;
+            const isActive = activeTool === tool.id;
+            return (
+              <button
+                key={tool.id}
+                onClick={() => {
+                  setActiveTool(tool.id);
+                  setIsSignatureOpen(false);
+                }}
+                title={tool.tip}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 relative group ${
+                  isActive 
+                    ? 'bg-primary text-on-primary shadow-sm ring-1 ring-primary/30' 
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                }`}
+              >
+                <Icon size={15} />
+                <span className="hidden xl:inline">{tool.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="h-4 w-px bg-outline-variant/30 flex-shrink-0" />
+
+        {/* GROUP 2: Content & Annotation Tools */}
+        <div className="flex items-center gap-0.5 bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline-variant/20 relative">
+          {contentTools.map((tool) => {
+            const Icon = tool.icon;
+            const isActive = activeTool === tool.id;
+
+            if (tool.id === 'signature') {
+              return (
+                <div key={tool.id} className="relative">
+                  <button
+                    onClick={() => {
+                      setActiveTool('signature');
+                      setIsSignatureOpen(!isSignatureOpen);
+                    }}
+                    title={tool.tip}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 relative group ${
+                      isActive || isSignatureOpen
+                        ? 'bg-primary text-on-primary shadow-sm ring-1 ring-primary/30' 
+                        : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                    }`}
+                  >
+                    <Icon size={15} />
+                    <span className="hidden xl:inline">{tool.label}</span>
+                    <ChevronDown size={12} className={`transition-transform duration-200 hidden xl:inline ${isSignatureOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Signature Popover Panel */}
+                  {isSignatureOpen && (
+                    <div className="fixed inset-x-2 top-16 md:absolute md:inset-auto md:top-[calc(100%+10px)] md:left-1/2 md:-translate-x-1/2 w-auto md:w-[360px] bg-surface rounded-xl shadow-2xl border border-outline-variant/40 p-4 z-[150] flex flex-col gap-3 max-h-[80vh] overflow-y-auto">
+                      <div className="flex items-center justify-between pb-2 border-b border-outline-variant/30">
+                        <span className="text-xs font-bold text-on-surface uppercase tracking-wider">Create Signature</span>
+                        <button 
+                          onClick={() => setIsSignatureOpen(false)}
+                          className="text-on-surface-variant hover:text-on-surface text-base leading-none p-1"
+                        >×</button>
+                      </div>
+                      
+                      {/* Tabs */}
+                      <div className="flex gap-1 bg-surface-container rounded-lg p-1">
+                        {(['type', 'draw', 'upload'] as const).map(tab => (
+                          <button
+                            key={tab}
+                            onClick={() => setSignatureTab(tab)}
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all capitalize flex items-center justify-center gap-1.5 ${
+                              signatureTab === tab
+                                ? 'bg-surface text-primary shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface'
+                            }`}
+                          >
+                            {tab === 'type' && <Type size={12} />}
+                            {tab === 'draw' && <Pencil size={12} />}
+                            {tab === 'upload' && <Upload size={12} />}
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* TYPE TAB */}
+                      {signatureTab === 'type' && (
+                        <>
+                          <input 
+                            type="text" 
+                            value={signatureText}
+                            onChange={(e) => setSignatureText(e.target.value)}
+                            className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary text-on-surface"
+                            placeholder="Type your name"
+                          />
+                          <div className="h-16 w-full border border-dashed border-outline-variant/40 rounded-lg flex items-center justify-center bg-surface-container-lowest overflow-hidden px-2">
+                            <span style={{ fontFamily: `"${signatureFonts.find(f => f.name === selectedFont)?.family}"`, fontSize: '32px', color: '#000' }}>
+                              {signatureText || 'Preview'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 max-h-36 overflow-y-auto pr-1">
+                            {signatureFonts.map(font => (
+                              <button
+                                key={font.name}
+                                onClick={() => setSelectedFont(font.name)}
+                                className={`p-1.5 border rounded-md text-xs truncate transition-all ${
+                                  selectedFont === font.name 
+                                    ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm' 
+                                    : 'border-outline-variant/20 text-on-surface hover:bg-surface-container'
+                                }`}
+                                style={{ fontFamily: `"${font.family}", cursive` }}
+                              >
+                                {signatureText || font.name}
+                              </button>
+                            ))}
+                          </div>
+                          <button 
+                            onClick={handleCreateTypedSignature}
+                            disabled={!signatureText.trim()}
+                            className="w-full bg-primary text-on-primary font-bold py-2 rounded-lg hover:bg-primary-container transition-colors text-xs shadow disabled:opacity-40"
+                          >
+                            Use Typed Signature
+                          </button>
+                        </>
+                      )}
+
+                      {/* DRAW TAB */}
+                      {signatureTab === 'draw' && (
+                        <>
+                          <p className="text-[11px] text-on-surface-variant">Draw signature using mouse/touch:</p>
+                          <div className="border border-outline-variant/40 rounded-lg overflow-hidden bg-white relative">
+                            <canvas
+                              ref={canvasDrawRef}
+                              width={320}
+                              height={130}
+                              className="w-full cursor-crosshair touch-none"
+                              onMouseDown={handleDrawStart}
+                              onMouseMove={handleDrawMove}
+                              onMouseUp={handleDrawEnd}
+                              onMouseLeave={handleDrawEnd}
+                              onTouchStart={(e) => { e.preventDefault(); handleDrawStart(e as any); }}
+                              onTouchMove={(e) => { e.preventDefault(); handleDrawMove(e as any); }}
+                              onTouchEnd={(e) => { e.preventDefault(); handleDrawEnd(); }}
+                            />
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 h-px w-4/5 bg-zinc-300 pointer-events-none" />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleClearDraw}
+                              className="flex-1 py-1.5 rounded-lg border border-outline-variant/40 text-xs font-semibold text-on-surface-variant hover:bg-surface-container transition-colors"
+                            >
+                              Clear
+                            </button>
+                            <button
+                              onClick={handleSaveDrawnSignature}
+                              className="flex-1 bg-primary text-on-primary font-bold py-1.5 rounded-lg hover:bg-primary-container transition-colors text-xs shadow"
+                            >
+                              Use Signature
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {/* UPLOAD TAB */}
+                      {signatureTab === 'upload' && (
+                        <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-outline-variant/40 rounded-xl p-6 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer">
+                          <Upload size={24} className="text-on-surface-variant" />
+                          <span className="text-xs font-semibold text-on-surface-variant">Click to browse image</span>
+                          <span className="text-[10px] text-on-surface-variant/60">PNG, JPG, SVG</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleUploadSignature} />
+                        </label>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={tool.id}
+                onClick={() => {
+                  setActiveTool(tool.id);
+                  setIsSignatureOpen(false);
+                }}
+                title={tool.tip}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 relative group ${
+                  isActive 
+                    ? 'bg-primary text-on-primary shadow-sm ring-1 ring-primary/30' 
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                }`}
+              >
+                <Icon size={15} />
+                <span className="hidden xl:inline">{tool.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="h-4 w-px bg-outline-variant/30 flex-shrink-0" />
+
+        {/* GROUP 3: Undo / Redo History */}
+        <div className="flex items-center gap-0.5 bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline-variant/20">
+          <button
+            onClick={undo}
+            disabled={past.length === 0}
+            title="Undo (Ctrl+Z)"
+            className="p-1.5 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high disabled:opacity-30 disabled:pointer-events-none transition duration-150"
+          >
+            <Undo2 size={15} />
+          </button>
+          <button
+            onClick={redo}
+            disabled={future.length === 0}
+            title="Redo (Ctrl+Y)"
+            className="p-1.5 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high disabled:opacity-30 disabled:pointer-events-none transition duration-150"
+          >
+            <Redo2 size={15} />
+          </button>
+        </div>
+      </div>
+
+      {/* RIGHT SECTION: Document Actions & Utilities */}
+      <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
         {/* Mobile Right Sidebar Toggle */}
         <button
           onClick={() => setMobileSidebarOpen(mobileSidebarOpen === 'right' ? null : 'right')}
-          className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-on-surface bg-surface-container hover:bg-surface-variant transition-colors shadow-sm ml-1 flex-shrink-0"
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-lg text-on-surface bg-surface-container hover:bg-surface-variant transition-colors shadow-sm"
+          aria-label="Toggle Properties Panel"
         >
           <Sliders size={18} />
         </button>
-      </div>
 
-      {/* Actions & Utilities */}
-      <div className="flex items-center gap-2 md:gap-4 ml-auto">
         {/* AI OCR Indicator */}
         {isOcrRunning && (
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse">
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-primary animate-pulse">
             <Sparkles size={13} className="animate-spin" />
             <span>OCR {Math.round(ocrProgress * 100)}%</span>
           </div>
         )}
 
-        {/* Auto-save Status - hide on very small screens */}
-        <div className="hidden sm:block">
-          <SaveStatusIndicator />
-        </div>
-
-        {/* Layout Toggle - hide on mobile */}
+        {/* Layout Mode Toggle */}
         <button 
           onClick={() => setLayoutMode(layoutMode === 'vertical' ? 'horizontal' : 'vertical')}
           title={`Switch to ${layoutMode === 'vertical' ? 'Horizontal' : 'Vertical'} Layout`}
-          className="hidden md:flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/30 ml-2"
+          className="hidden lg:flex items-center justify-center w-9 h-9 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors border border-outline-variant/30"
         >
           <LayoutDashboard size={16} className={layoutMode === 'horizontal' ? 'rotate-90 text-primary' : ''} />
         </button>
 
-        {/* Top Header Actions */}
+        {/* Upload New Button */}
         <button 
           onClick={onUploadClick}
-          className="flex items-center justify-center w-10 h-10 md:w-auto md:px-4 md:py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant text-sm font-medium transition-colors panel-transition border border-outline-variant/30"
-          title="Upload New"
+          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-xs font-bold transition-all border border-outline-variant/30"
+          title="Upload new PDF document"
         >
-          <UploadCloud size={16} />
-          <span className="hidden xl:inline ml-2">Upload New</span>
+          <UploadCloud size={15} />
+          <span className="hidden xl:inline">Upload New</span>
         </button>
 
+        {/* Save Button */}
         <button 
           onClick={async () => {
             setSaveState('saving');
@@ -381,267 +604,35 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
             }
           }}
           disabled={saveState === 'saving'}
-          className={`flex items-center justify-center w-10 h-10 md:w-auto md:px-5 md:py-2 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all panel-transition ${
+          className={`flex items-center justify-center px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-all ${
             saveState === 'saved'
               ? 'bg-emerald-600 text-white'
               : saveState === 'error'
               ? 'bg-error text-on-error'
-              : 'bg-primary text-on-primary hover:bg-primary-container'
+              : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline-variant/40'
           }`}
-          title="Save"
+          title="Save Session"
         >
-          {saveState === 'saving' && <Loader2 size={16} className="animate-spin" />}
-          {saveState === 'saved' && <Check size={16} />}
-          {saveState === 'error' && <Save size={16} />}
-          {saveState === 'idle' && <Save size={16} />}
-          <span className="hidden sm:inline ml-2">
-            {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved!' : saveState === 'error' ? 'Error' : 'Save'}
+          {saveState === 'saving' && <Loader2 size={15} className="animate-spin mr-1" />}
+          {saveState === 'saved' && <Check size={15} className="mr-1" />}
+          {saveState === 'idle' && <Save size={15} className="mr-1" />}
+          <span className="hidden sm:inline">
+            {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save'}
           </span>
         </button>
 
+        {/* Primary Export Action */}
         <button
           onClick={onExport}
-          title="Export — Download edited PDF"
-          className="flex items-center justify-center w-10 h-10 md:w-auto md:px-5 md:py-2 rounded-lg bg-secondary text-on-secondary text-sm font-semibold hover:bg-secondary-container shadow-md hover:shadow-lg transition-all panel-transition"
+          title="Export — Download compiled PDF"
+          className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold hover:bg-primary-container shadow-md hover:shadow-lg transition-all"
         >
-          <Download size={16} />
-          <span className="hidden sm:inline ml-2">Export</span>
+          <Download size={15} />
+          <span>Export</span>
         </button>
       </div>
     </header>
-
-    {/* Main Drawing/Editing Tools - Floating bottom on mobile, top centered on desktop */}
-    <nav className="fixed bottom-4 left-2 right-2 w-auto rounded-2xl md:bottom-auto md:top-3 md:left-1/2 md:-translate-x-1/2 flex items-center justify-around md:justify-center md:gap-1 bg-surface-container-highest md:bg-surface-container-high border md:border border-outline-variant/30 p-2 md:p-1 shadow-2xl shadow-black/20 md:shadow-sm z-[40] md:z-[100]">
-      {/* Mobile Back Button — returns to Select tool without browser back */}
-      {activeTool !== 'select' && (
-        <button
-          onClick={() => {
-            setActiveTool('select');
-            setIsSignatureOpen(false);
-          }}
-          title="Back to Select"
-          className="p-2.5 md:p-2 flex-shrink-0 rounded-lg transition duration-150 relative group flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container-highest md:border-r md:border-outline-variant/30 md:pr-2 md:mr-1"
-        >
-          <ArrowLeft size={20} className="md:w-4 md:h-4" />
-          {/* Premium Tooltip */}
-          <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 md:bottom-auto md:-bottom-9 md:top-auto px-2.5 py-1.5 rounded-md bg-on-surface text-surface text-[10px] md:text-[9px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">
-            Back
-          </div>
-        </button>
-      )}
-
-      {/* Undo/Redo Group inside central nav */}
-      <div className="flex items-center gap-1 border-r border-outline-variant/30 pr-1 mr-1 hidden md:flex">
-        <button
-          onClick={undo}
-          disabled={past.length === 0}
-          title="Undo — Step back (Ctrl+Z)"
-          className="p-2 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest disabled:opacity-30 disabled:pointer-events-none transition duration-150 relative group"
-        >
-          <Undo2 size={16} />
-          <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">Undo</div>
-        </button>
-        <button
-          onClick={redo}
-          disabled={future.length === 0}
-          title="Redo — Step forward (Ctrl+Shift+Z)"
-          className="p-2 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest disabled:opacity-30 disabled:pointer-events-none transition duration-150 relative group"
-        >
-          <Redo2 size={16} />
-          <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-on-surface text-surface text-[9px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">Redo</div>
-        </button>
-      </div>
-
-      {tools.map((tool) => {
-        const Icon = tool.icon;
-        const isActive = activeTool === tool.id;
-        
-        if (tool.id === 'signature') {
-          return (
-            <div key={tool.id} className="relative flex-shrink-0">
-              <button
-                onClick={() => {
-                  setActiveTool('signature');
-                  setIsSignatureOpen(!isSignatureOpen);
-                }}
-                title={`Signature — ${tool.tip}`}
-                className={`p-2.5 md:p-2 rounded-lg transition duration-150 relative group flex items-center justify-center ${
-                  isActive || isSignatureOpen
-                    ? 'bg-primary text-on-primary shadow-sm ring-2 ring-primary/30' 
-                    : 'text-on-surface hover:text-primary hover:bg-surface-container-highest'
-                }`}
-              >
-                <Icon size={20} className="md:w-4 md:h-4" />
-                {/* Premium Tooltip */}
-                <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 md:bottom-auto md:-bottom-9 md:top-auto px-2.5 py-1.5 rounded-md bg-on-surface text-surface text-[10px] md:text-[9px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">
-                  Signature
-                </div>
-              </button>
-              
-              {isSignatureOpen && (
-                <div className="fixed inset-0 w-full h-full md:h-auto md:absolute md:inset-auto md:bottom-auto md:top-[calc(100%+12px)] md:left-1/2 md:-translate-x-1/2 md:w-[360px] md:rounded-xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:shadow-2xl border border-outline-variant/50 p-4 pb-8 md:pb-4 z-[150] flex flex-col gap-3 overflow-y-auto pt-10 md:pt-4 md:max-h-[70vh]">
-                  <div className="flex items-center justify-between pb-3 md:pb-0 border-b border-outline-variant/30 md:border-none mb-1 md:mb-0">
-                    <button 
-                      onClick={() => setIsSignatureOpen(false)}
-                      className="md:hidden flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface text-sm font-bold bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/30 shadow-sm active:scale-95 transition-all"
-                    >
-                      <ArrowLeft size={16} /> Back
-                    </button>
-                    <h4 className="text-sm font-bold text-on-surface hidden md:block">Create Signature</h4>
-                    <div className="md:hidden text-xs font-bold text-on-surface uppercase tracking-wider">
-                      Signature
-                    </div>
-                    <button 
-                      onClick={() => setIsSignatureOpen(false)}
-                      className="hidden md:block text-on-surface-variant hover:text-on-surface text-lg leading-none"
-                    >×</button>
-                  </div>
-                  
-                  {/* Tabs: Type / Draw / Upload */}
-                  <div className="flex gap-1 bg-surface-container rounded-lg p-1">
-                    {(['type', 'draw', 'upload'] as const).map(tab => (
-                      <button
-                        key={tab}
-                        onClick={() => setSignatureTab(tab)}
-                        className={`flex-1 py-1.5 px-3 text-xs font-semibold rounded-md transition-all capitalize flex items-center justify-center gap-1.5 ${
-                          signatureTab === tab
-                            ? 'bg-white text-primary shadow-sm'
-                            : 'text-on-surface-variant hover:text-on-surface'
-                        }`}
-                      >
-                        {tab === 'type' && <Type size={12} />}
-                        {tab === 'draw' && <Pencil size={12} />}
-                        {tab === 'upload' && <Upload size={12} />}
-                        {tab}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* TYPE TAB */}
-                  {signatureTab === 'type' && (
-                    <>
-                      <input 
-                        type="text" 
-                        value={signatureText}
-                        onChange={(e) => setSignatureText(e.target.value)}
-                        className="w-full border border-outline-variant/50 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Type your name"
-                      />
-                      
-                      {/* Live Preview */}
-                      <div className="h-20 w-full border border-dashed border-outline-variant/50 rounded-lg flex items-center justify-center bg-surface-container-lowest overflow-hidden">
-                        <span style={{ fontFamily: `"${signatureFonts.find(f => f.name === selectedFont)?.family}"`, fontSize: '42px', color: '#000' }}>
-                          {signatureText || 'Preview'}
-                        </span>
-                      </div>
-                      
-                      {/* Font Grid */}
-                      <div className="grid grid-cols-3 gap-1 flex-1 min-h-[200px] md:max-h-48 overflow-y-auto pr-1">
-                        {signatureFonts.map(font => (
-                          <button
-                            key={font.name}
-                            onClick={() => setSelectedFont(font.name)}
-                            className={`p-1.5 border rounded-lg text-sm flex items-center justify-center truncate transition-all ${
-                              selectedFont === font.name 
-                                ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary/30 shadow-sm' 
-                                : 'border-outline-variant/30 text-on-surface hover:bg-surface-container hover:border-outline-variant/60'
-                            }`}
-                            style={{ fontFamily: `"${font.family}", cursive` }}
-                          >
-                            {signatureText || font.name}
-                          </button>
-                        ))}
-                      </div>
-                      
-                      <button 
-                        onClick={handleCreateTypedSignature}
-                        disabled={!signatureText.trim()}
-                        className="w-full bg-primary text-on-primary font-bold py-2.5 rounded-lg hover:bg-primary-container transition-colors shadow-md disabled:opacity-40 disabled:pointer-events-none"
-                      >
-                        Use This Signature
-                      </button>
-                    </>
-                  )}
-
-                  {/* DRAW TAB */}
-                  {signatureTab === 'draw' && (
-                    <>
-                      <p className="text-xs text-on-surface-variant">Draw your signature below:</p>
-                      <div className="border border-outline-variant/50 rounded-lg overflow-hidden bg-white relative">
-                        <canvas
-                          ref={canvasDrawRef}
-                          width={380}
-                          height={150}
-                          className="w-full cursor-crosshair touch-none"
-                          onMouseDown={handleDrawStart}
-                          onMouseMove={handleDrawMove}
-                          onMouseUp={handleDrawEnd}
-                          onMouseLeave={handleDrawEnd}
-                          onTouchStart={(e) => { e.preventDefault(); handleDrawStart(e as any); }}
-                          onTouchMove={(e) => { e.preventDefault(); handleDrawMove(e as any); }}
-                          onTouchEnd={(e) => { e.preventDefault(); handleDrawEnd(); }}
-                        />
-                        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px w-3/4 bg-outline-variant/40 pointer-events-none" />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleClearDraw}
-                          className="flex-1 py-2 rounded-lg border border-outline-variant/50 text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
-                        >
-                          Clear
-                        </button>
-                        <button
-                          onClick={handleSaveDrawnSignature}
-                          className="flex-1 bg-primary text-on-primary font-bold py-2 rounded-lg hover:bg-primary-container transition-colors shadow-md"
-                        >
-                          Use Drawn Signature
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {/* UPLOAD TAB */}
-                  {signatureTab === 'upload' && (
-                    <>
-                      <p className="text-xs text-on-surface-variant">Upload a signature image (PNG, JPG, SVG):</p>
-                      <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-outline-variant/50 rounded-xl p-8 hover:border-primary/50 hover:bg-primary/[0.03] transition-colors cursor-pointer">
-                        <Upload size={32} className="text-on-surface-variant" />
-                        <span className="text-sm font-medium text-on-surface-variant">Click to browse files</span>
-                        <span className="text-xs text-on-surface-variant/60">PNG, JPG, SVG supported</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleUploadSignature} />
-                      </label>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        }
-
-        return (
-          <button
-            key={tool.id}
-            onClick={() => {
-              setActiveTool(tool.id);
-              setIsSignatureOpen(false);
-            }}
-            title={`${tool.label} — ${tool.tip}`}
-            className={`p-2.5 md:p-2 flex-shrink-0 rounded-lg transition duration-150 relative group flex items-center justify-center ${ 
-              isActive 
-                ? 'bg-primary text-on-primary shadow-sm ring-2 ring-primary/30' 
-                : 'text-on-surface hover:text-primary hover:bg-surface-container-highest'
-            }`}
-          >
-            <Icon size={20} className="md:w-4 md:h-4" />
-            {/* Premium Tooltip */}
-            <div className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 md:bottom-auto md:-bottom-9 md:top-auto px-2.5 py-1.5 rounded-md bg-on-surface text-surface text-[10px] md:text-[9px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-[120]">
-              {tool.label}
-            </div>
-          </button>
-        );
-      })}
-    </nav>
-    </>
   );
 };
+
 export default ToolbarTop;

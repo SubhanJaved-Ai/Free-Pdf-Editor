@@ -206,8 +206,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   zoomPanelPos: null,
   zoomPanelLocked: true,
   zoomPanelSize: 'md',
-  leftSidebarWidth: 256,
-  rightSidebarWidth: 256,
+  leftSidebarWidth: 260,
+  rightSidebarWidth: 320,
   bottomDockHeight: 288,
   mobileSidebarOpen: null,
 

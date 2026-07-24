@@ -81,15 +81,15 @@ export default function EditorPage() {
       if (target === 'left') {
         const diff = e.clientX - startCoord;
         let newVal = startVal + diff;
-        if (newVal < 200) newVal = 200;
-        if (newVal > window.innerWidth * 0.4) newVal = window.innerWidth * 0.4;
+        if (newVal < 220) newVal = 220;
+        if (newVal > Math.min(480, window.innerWidth * 0.4)) newVal = Math.min(480, window.innerWidth * 0.4);
         setLeftSidebarWidth(newVal);
       } else if (target === 'right') {
         // Dragging right sidebar handle moves left to increase width
         const diff = startCoord - e.clientX;
         let newVal = startVal + diff;
-        if (newVal < 200) newVal = 200;
-        if (newVal > window.innerWidth * 0.4) newVal = window.innerWidth * 0.4;
+        if (newVal < 260) newVal = 260;
+        if (newVal > Math.min(520, window.innerWidth * 0.45)) newVal = Math.min(520, window.innerWidth * 0.45);
         setRightSidebarWidth(newVal);
       } else if (target === 'bottom') {
         // Dragging bottom dock handle moves up to increase height
@@ -219,7 +219,7 @@ export default function EditorPage() {
         currentPageDimensions,
         {
           fileName: currentFileName || 'edited-document.pdf',
-          optimizeSize: true
+          optimizeSize: false
         }
       );
       // Trigger file download
