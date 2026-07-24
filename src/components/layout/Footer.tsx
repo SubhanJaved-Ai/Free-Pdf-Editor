@@ -1,28 +1,45 @@
 import React from 'react';
 import Link from 'next/link';
+import { FileText, ShieldCheck, Zap } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-background border-t border-outline-variant/30 py-12">
-      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
-            <span className="text-on-primary font-bold text-[10px] tracking-widest">V</span>
+    <footer className="bg-on-background text-white py-16 relative z-10 border-t border-white/10">
+      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-10">
+        
+        {/* Brand Summary */}
+        <div className="flex flex-col items-center md:items-start gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary via-primary-light to-secondary flex items-center justify-center shadow-md">
+              <FileText size={16} className="text-white" />
+            </div>
+            <span className="font-bold text-lg text-white tracking-tight">AetherPDF</span>
           </div>
-          <span className="font-semibold text-on-surface text-sm">VeltisPDF</span>
+          <p className="text-xs text-white/60 max-w-sm text-center md:text-left leading-relaxed">
+            Precision engineering for digital documents. 100% in-browser processing with zero server uploads. Fast, private, and free.
+          </p>
         </div>
-        
-        <div className="flex gap-6 text-sm text-on-surface-variant font-medium">
-          <Link href="/editor" className="hover:text-primary transition-colors">Editor</Link>
-          <Link href="/tools" className="hover:text-primary transition-colors">Tools</Link>
-          <Link href="/#faq" className="hover:text-primary transition-colors">FAQ</Link>
-          <Link href="#" className="hover:text-primary transition-colors">Privacy</Link>
-          <Link href="#" className="hover:text-primary transition-colors">Terms</Link>
+
+        {/* Quick Links */}
+        <div className="flex flex-wrap justify-center gap-8 text-xs font-medium text-white/70">
+          <Link href="/editor" className="hover:text-white transition-colors">Editor</Link>
+          <Link href="/tools" className="hover:text-white transition-colors">All Tools</Link>
+          <Link href="/#features" className="hover:text-white transition-colors">Features</Link>
+          <Link href="/#how-it-works" className="hover:text-white transition-colors">How It Works</Link>
+          <Link href="/#faq" className="hover:text-white transition-colors">FAQ</Link>
         </div>
-        
-        <div className="text-xs text-on-surface-variant/70">
-          © {new Date().getFullYear()} VeltisPDF
+
+        {/* Trust Badge & Copyright */}
+        <div className="flex flex-col items-center md:items-end gap-2">
+          <div className="flex items-center gap-4 text-[11px] text-white/50">
+            <span className="flex items-center gap-1"><ShieldCheck size={13} className="text-emerald-400" /> 100% Secure</span>
+            <span className="flex items-center gap-1"><Zap size={13} className="text-amber-400" /> WebAssembly Speed</span>
+          </div>
+          <div className="text-[11px] text-white/40">
+            © {new Date().getFullYear()} AetherPDF. All rights reserved.
+          </div>
         </div>
+
       </div>
     </footer>
   );
