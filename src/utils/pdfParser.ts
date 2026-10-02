@@ -138,11 +138,10 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
         6
       );
       
-      // ── Width: use PDF-reported width when available; fall back to glyph estimate
-      const itemWidthPx = Math.max(
-        item.width || 0,
-        item.str.length * fontSizePx * 0.55
-      );
+      // ── Width: use PDF-reported font width when available; fall back to glyph estimate
+      const itemWidthPx = (item.width && item.width > 0)
+        ? item.width
+        : item.str.length * fontSizePx * 0.55;
       
       // ── Color: matched from PDF operator list graphics state
       let color = '#000000';
@@ -280,6 +279,9 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
           } catch (e) {
             // Silently ignore obj retrieval errors
           }
+
+          // Only add image elements if real visual image data was successfully extracted
+          if (!imgDataUrl) continue;
 
           const elementId = `orig-img-${pageIndex}-${Math.random().toString(36).substr(2, 9)}`;
 

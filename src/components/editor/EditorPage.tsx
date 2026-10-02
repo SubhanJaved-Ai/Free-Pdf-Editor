@@ -62,7 +62,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
   const [hoveredTextId, setHoveredTextId] = useState<string | null>(null);
 
   // Pixel rect of the active (editing) text element, used to position FloatingFormatToolbar
-  const [activeElRect, setActiveElRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [activeElRect, setActiveElRect] = useState<{ top: number; left: number; width: number; height?: number } | null>(null);
 
 
   
@@ -746,6 +746,10 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
     // In select mode: single click on any text element → immediately enter edit mode.
     // No double-click required, no tool switching needed.
     if (el.type === 'text' && (activeTool === 'select' || activeTool === 'text')) {
+      if (activeElementId === elId) {
+        // Already editing this text element! Let the browser handle caret/text interaction directly
+        return;
+      }
       setActiveElementId(elId);
       setSelectedElementIds([elId]);
       setDragState(null);
@@ -759,6 +763,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
           top: elDomRect.top - containerDomRect.top,
           left: elDomRect.left - containerDomRect.left,
           width: elDomRect.width,
+          height: elDomRect.height,
         });
       }
       return;
@@ -877,18 +882,21 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
             const isSelected = selectedElementIds.includes(el.id);
             const isEditing = activeElementId === el.id;
             
+            const isText = el.type === 'text';
             // Absolute positioning percentages styles
             const elementStyle: React.CSSProperties = {
               position: 'absolute',
               left: `${el.x}%`,
               top: `${el.y}%`,
-              width: `${el.width}%`,
+              width: isEditing ? 'max-content' : `${el.width}%`,
+              minWidth: isText ? `${el.width}%` : undefined,
               height: `${el.height}%`,
+              minHeight: isText ? `${Math.max(el.fontSize || 14, 16)}px` : undefined,
               transform: `rotate(${el.rotation || 0}deg)`,
               opacity: el.opacity,
-              zIndex: isSelected ? 20 : 10,
+              zIndex: isSelected ? 30 : isEditing ? 25 : isText ? 15 : 5,
               userSelect: isEditing ? 'text' : 'none',
-              pointerEvents: (el.type === 'drawing' && !isSelected) ? 'none' : 'auto',
+              pointerEvents: (el.type === 'drawing' && !isSelected) || (el.type === 'image' && !el.src) ? 'none' : 'auto',
               backgroundColor: 'rgba(255, 255, 255, 0.01)', // Crucial: Ensures empty transparent text boxes still catch mouse events
             };
 
@@ -1033,6 +1041,11 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                       contentEditable={isEditing}
                       suppressContentEditableWarning
                       dir="auto"
+                      onPointerDown={(e) => {
+                        if (isEditing) {
+                          e.stopPropagation(); // prevent bubbling to element drag handler while editing text
+                        }
+                      }}
                       onBlur={(e) => {
                         // If Escape was pressed, we already restored the snapshot — don't overwrite.
                         if (escapeWasPressedRef.current) {
@@ -1045,15 +1058,40 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         }
                         // Read the final text from the DOM (not from state, which may be stale)
                         let newText = e.currentTarget.innerText || '';
+                        newText = newText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                        if (newText.endsWith('\n\n')) {
+                          newText = newText.slice(0, -1);
+                        }
                         if (newText.trim() === '') newText = '\u00A0'; // keep selectable
-                        // Save only the text — NEVER apply global style defaults.
-                        // The element keeps its original font/color unless the user explicitly
-                        // changed them via the FloatingFormatToolbar.
-                        updateElement(el.id, { text: newText });
+
+                        // Measure rendered size so bounding box and masks wrap accurately
+                        let updatedWidth = el.width;
+                        let updatedHeight = el.height;
+                        if (containerRef.current) {
+                          const pageRect = containerRef.current.getBoundingClientRect();
+                          const textRect = e.currentTarget.getBoundingClientRect();
+                          if (pageRect.width > 0 && textRect.width > 0) {
+                            const wPct = (textRect.width / pageRect.width) * 100;
+                            const hPct = (textRect.height / pageRect.height) * 100;
+                            updatedWidth = Math.max(el.originalWidth || 0, wPct);
+                            updatedHeight = Math.max(el.originalHeight || 0, hPct);
+                          }
+                        }
+
+                        // Save the text & updated dimensions
+                        updateElement(el.id, {
+                          text: newText,
+                          width: updatedWidth,
+                          height: updatedHeight,
+                        });
                         preEditSnapshotRef.current = null;
                         editingInitializedForRef.current = null;
-                        setActiveElementId(null);
-                        setActiveElRect(null);
+
+                        // Only clear activeElementId if user hasn't already clicked another element
+                        if (useEditorStore.getState().activeElementId === el.id) {
+                          setActiveElementId(null);
+                          setActiveElRect(null);
+                        }
                       }}
                       onKeyDown={(e) => {
                         // Always stop propagation to prevent global shortcuts from firing
@@ -1070,11 +1108,18 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                             e.currentTarget.innerText = (snap.text as string) || '';
                           }
                           e.currentTarget.blur();
+                          return;
                         }
 
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                          e.preventDefault();
-                          e.currentTarget.blur();
+                        if (e.key === 'Enter') {
+                          if (e.shiftKey) {
+                            // Shift+Enter: allow inserting a newline!
+                            return;
+                          } else {
+                            // Plain Enter: Commit edits and blur immediately! Do NOT go to next line.
+                            e.preventDefault();
+                            e.currentTarget.blur();
+                          }
                         }
                       }}
                       onPaste={(e) => {
@@ -1087,7 +1132,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         sel.getRangeAt(0).insertNode(document.createTextNode(text));
                         sel.collapseToEnd();
                       }}
-                      className="w-full h-full select-text outline-none border-none m-0 p-0 whitespace-pre-wrap break-words min-h-[1em]"
+                      className="w-full h-full select-text outline-none border-none m-0 p-0 whitespace-pre min-h-[1em]"
                       style={{
                         // ── Typography: always read from the ELEMENT, never from global store defaults.
                         // This is what makes editing feel like the original text — the styles are
@@ -1356,7 +1401,6 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
             const activeEl = pageElements.find(el => el.id === activeElementId);
             if (!activeEl || activeEl.type !== 'text') return null;
 
-            // Compute pixel position relative to the overlay container
             const containerEl = containerRef.current;
             let rect = activeElRect;
             if (!rect && containerEl) {
@@ -1368,6 +1412,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                   top: domRect.top - cRect.top,
                   left: domRect.left - cRect.left,
                   width: domRect.width,
+                  height: domRect.height,
                 };
               }
             }
@@ -1378,6 +1423,8 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
               <FloatingFormatToolbar
                 activeElement={activeEl}
                 elementRect={rect}
+                containerWidth={pageWidth}
+                containerHeight={pageHeight}
                 onClose={() => setActiveElementId(null)}
               />
             );

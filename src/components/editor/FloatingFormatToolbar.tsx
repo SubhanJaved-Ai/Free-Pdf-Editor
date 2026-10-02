@@ -8,7 +8,9 @@ import { loadWebFontIfNeeded, getFontFallbackStack } from '../../utils/fontLoade
 interface FloatingFormatToolbarProps {
   activeElement: EditorElement;
   /** Pixel-space bounding rect of the element relative to the canvas container */
-  elementRect: { top: number; left: number; width: number };
+  elementRect: { top: number; left: number; width: number; height?: number };
+  containerWidth?: number;
+  containerHeight?: number;
   onClose: () => void;
 }
 
@@ -35,6 +37,8 @@ const FONT_FAMILIES = [
 export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
   activeElement,
   elementRect,
+  containerWidth = 595,
+  containerHeight = 842,
   onClose,
 }) => {
   const { updateElement } = useEditorStore();
@@ -43,12 +47,23 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
   // ── Local state mirrors the element's own properties (NOT global store defaults)
   const [fontFamily, setFontFamily] = useState(activeElement.fontFamily || 'Helvetica');
   const [fontSize, setFontSize] = useState(activeElement.fontSize || 14);
+  const [toolbarSize, setToolbarSize] = useState({ width: 460, height: 44 });
 
   // Sync whenever the active element itself changes (e.g., clicking a different text box)
   useEffect(() => {
     setFontFamily(activeElement.fontFamily || 'Helvetica');
     setFontSize(activeElement.fontSize || 14);
   }, [activeElement.id, activeElement.fontFamily, activeElement.fontSize]);
+
+  // Dynamically measure toolbar dimensions to perform precise boundary clamping
+  useEffect(() => {
+    if (toolbarRef.current) {
+      const rect = toolbarRef.current.getBoundingClientRect();
+      if (rect.width > 0 && (rect.width !== toolbarSize.width || rect.height !== toolbarSize.height)) {
+        setToolbarSize({ width: rect.width, height: rect.height });
+      }
+    }
+  }, [fontFamily, fontSize]);
 
   // ── Helper: patch element in store AND live-update the DOM style ──────────────
   const getEditNode = (): HTMLElement | null =>
@@ -85,11 +100,28 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
     update({ fontSize: clamped });
   };
 
-  // Position: render the toolbar above the element, aligned to its left edge.
-  const TOOLBAR_HEIGHT = 44; // px
+  // ── Smart Boundary-Aware Placement ───────────────────────────────────────────
+  const TOOLBAR_HEIGHT = toolbarSize.height || 44; // px
+  const TOOLBAR_WIDTH = toolbarSize.width || 460;
   const GAP = 8;
-  const topPx = Math.max(0, elementRect.top - TOOLBAR_HEIGHT - GAP);
-  const leftPx = Math.max(0, elementRect.left);
+  const parentW = containerWidth || 595;
+  const parentH = containerHeight || 842;
+
+  // 1. Horizontal: Center over the text element, strictly clamped within page edges
+  const idealLeft = elementRect.left + (elementRect.width / 2) - (TOOLBAR_WIDTH / 2);
+  const minLeft = GAP;
+  const maxLeft = Math.max(minLeft, parentW - TOOLBAR_WIDTH - GAP);
+  const leftPx = Math.max(minLeft, Math.min(idealLeft, maxLeft));
+
+  // 2. Vertical: Position above if room permits; flip below if near top of page
+  const elHeight = elementRect.height || (activeElement.fontSize ? activeElement.fontSize * 1.3 : 24);
+  const hasRoomAbove = elementRect.top >= (TOOLBAR_HEIGHT + GAP);
+  let topPx = hasRoomAbove
+    ? elementRect.top - TOOLBAR_HEIGHT - GAP
+    : elementRect.top + elHeight + GAP;
+
+  // Clamp vertically so it never overflows top or bottom of the page
+  topPx = Math.max(GAP, Math.min(topPx, parentH - TOOLBAR_HEIGHT - GAP));
 
   const isBold      = activeElement.fontWeight === 'bold';
   const isItalic    = activeElement.fontStyle === 'italic';
@@ -102,11 +134,11 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
   return (
     <div
       ref={toolbarRef}
-      className="absolute z-[200] flex items-center gap-0.5 px-1.5 py-1 bg-zinc-950/96 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl shadow-black/50 select-none"
+      className="absolute z-[200] flex items-center flex-nowrap shrink-0 whitespace-nowrap gap-0.5 px-1.5 py-1 bg-zinc-950/96 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl shadow-black/50 select-none"
       style={{
         top: topPx,
         left: leftPx,
-        maxWidth: 'calc(100% - 16px)',
+        maxWidth: `calc(${parentW}px - 16px)`,
         fontSize: '13px',
         animation: 'fadeSlideIn 120ms ease-out both',
       }}

@@ -561,7 +561,6 @@ export async function exportEditedPdf(
             color: hexToRgb(el.color),
             rotate: rot,
             opacity: el.opacity,
-            maxWidth: elW,
             lineHeight: el.lineHeight ? el.lineHeight * (el.fontSize || 14) : (el.fontSize || 14) * 1.2,
           });
         } catch (drawErr) {
