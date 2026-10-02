@@ -48,7 +48,7 @@ async function testExporter() {
 
   try {
     console.log("Calling exportEditedPdf...");
-    const resultBytes = await exportEditedPdf(
+    const result = await exportEditedPdf(
       pdfBytes,
       elements,
       pageOrders,
@@ -56,8 +56,8 @@ async function testExporter() {
       { fileName: 'test.pdf', optimizeSize: false }
     );
     
-    fs.writeFileSync('test_output_exporter.pdf', resultBytes);
-    console.log("PDF saved successfully, size:", resultBytes.length);
+    fs.writeFileSync('test_output_exporter.pdf', result.bytes);
+    console.log("PDF saved successfully, size:", result.bytes.length);
   } catch (err) {
     console.error("Export Failed:", err);
   }

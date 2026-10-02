@@ -92,6 +92,13 @@ body {
   border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
+/* Document Canvas Background (Adobe Acrobat / Figma Neutral Workspace) */
+.canvas-grid-bg {
+  background-color: #ebeef2;
+  background-image: radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px);
+  background-size: 24px 24px;
+}
+
 /* Ambient Mesh Background */
 .mesh-gradient {
   position: absolute;

@@ -3,136 +3,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useEditorStore } from '../../store/useEditorStore';
 import { EditorPage } from './EditorPage';
-import { Sparkles, Maximize2, Move, ZoomIn, ZoomOut, Lock, Unlock, GripHorizontal, Settings2 } from 'lucide-react';
 import { runOcrOnPage } from '../../utils/ocrWorker';
-
-const DraggableZoomWidget = () => {
-  const {
-    zoom, setZoom,
-    zoomPanelPos, setZoomPanelPos,
-    zoomPanelLocked, setZoomPanelLocked,
-    zoomPanelSize, setZoomPanelSize
-  } = useEditorStore();
-
-  const widgetRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef({ isDragging: false, startX: 0, startY: 0, initLeft: 0, initTop: 0 });
-  const [pos, setPos] = useState<{left: number, top: number} | null>(null);
-
-  // Sync with global store on mount
-  useEffect(() => {
-    if (zoomPanelPos) {
-      setPos({ left: zoomPanelPos.x, top: zoomPanelPos.y });
-    }
-  }, [zoomPanelPos]);
-
-  useEffect(() => {
-    const handleMove = (e: PointerEvent) => {
-      if (!dragRef.current.isDragging) return;
-      const dx = e.clientX - dragRef.current.startX;
-      const dy = e.clientY - dragRef.current.startY;
-      let newL = dragRef.current.initLeft + dx;
-      let newT = dragRef.current.initTop + dy;
-      
-      // Constrain to viewport bounds
-      if (widgetRef.current) {
-         const rect = widgetRef.current.getBoundingClientRect();
-         if (newL < 0) newL = 0;
-         if (newT < 0) newT = 0;
-         if (newL + rect.width > window.innerWidth) newL = window.innerWidth - rect.width;
-         if (newT + rect.height > window.innerHeight) newT = window.innerHeight - rect.height;
-      }
-      
-      setPos({ left: newL, top: newT });
-    };
-
-    const handleUp = () => {
-      if (dragRef.current.isDragging) {
-        dragRef.current.isDragging = false;
-        setPos((currentPos) => {
-          if (currentPos) {
-            setZoomPanelPos({ x: currentPos.left, y: currentPos.top });
-          }
-          return currentPos;
-        });
-      }
-    };
-
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
-    return () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-    };
-  }, [setZoomPanelPos]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (zoomPanelLocked) return;
-    if ((e.target as HTMLElement).closest('button')) return;
-
-    if (widgetRef.current) {
-      const rect = widgetRef.current.getBoundingClientRect();
-      dragRef.current = {
-        isDragging: true,
-        startX: e.clientX,
-        startY: e.clientY,
-        initLeft: rect.left,
-        initTop: rect.top
-      };
-    }
-  };
-
-  const isPos = pos !== null;
-  const defaultBottom = typeof window !== 'undefined' && window.innerWidth <= 768 ? '90px' : '24px';
-  const style = isPos ? { left: pos.left, top: pos.top, right: 'auto', bottom: 'auto' } : { bottom: defaultBottom, right: '24px' };
-  
-  const sizeMap = {
-    sm: { scale: 'scale-90', icon: 14, pad: 'p-0.5' },
-    md: { scale: 'scale-100', icon: 16, pad: 'p-1' },
-    lg: { scale: 'scale-110', icon: 18, pad: 'p-1.5' }
-  };
-  const sm = sizeMap[zoomPanelSize];
-
-  return (
-    <div 
-      ref={widgetRef}
-      onPointerDown={handlePointerDown}
-      style={style}
-      className={`fixed z-50 flex items-center gap-1 ${sm.pad} rounded-xl bg-surface/95 backdrop-blur-md border border-outline-variant/40 shadow-xl ${zoomPanelLocked ? '' : 'cursor-grab active:cursor-grabbing hover:ring-2 ring-primary/50'} transition-transform origin-bottom-right ${sm.scale}`}
-    >
-      {!zoomPanelLocked && (
-        <div className="flex items-center text-outline cursor-grab p-1" title="Drag to move">
-          <GripHorizontal size={14} />
-        </div>
-      )}
-      <button onClick={() => setZoom(z => Math.max(z - 0.1, 0.1))} title="Zoom Out" className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition">
-        <ZoomOut size={sm.icon} />
-      </button>
-      <div onClick={() => setZoom(1)} title="Reset Zoom" className="w-16 text-center select-none cursor-pointer hover:bg-surface-container-high rounded px-1 py-1 transition">
-        <span className="text-xs font-bold text-on-surface">{Math.round(zoom * 100)}%</span>
-      </div>
-      <button onClick={() => setZoom(z => Math.min(z + 0.1, 4.0))} title="Zoom In" className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition">
-        <ZoomIn size={sm.icon} />
-      </button>
-      <div className="w-[1px] h-6 bg-outline-variant/30 mx-1"></div>
-      <button 
-        onClick={() => setZoomPanelSize(zoomPanelSize === 'sm' ? 'md' : zoomPanelSize === 'md' ? 'lg' : 'sm')} 
-        title="Toggle Panel Size" 
-        className="p-2 rounded-lg text-on-surface-variant hover:text-primary transition"
-      >
-        <Settings2 size={14} />
-      </button>
-      <button 
-        onClick={() => setZoomPanelLocked(!zoomPanelLocked)} 
-        title={zoomPanelLocked ? 'Unlock Position' : 'Lock Position'} 
-        className={`p-2 rounded-lg transition ${zoomPanelLocked ? 'text-primary bg-primary/10' : 'text-on-surface-variant hover:text-primary'}`}
-      >
-        {zoomPanelLocked ? <Lock size={14} /> : <Unlock size={14} />}
-      </button>
-    </div>
-  );
-};
-
-const MemoizedZoomWidget = React.memo(DraggableZoomWidget);
 
 interface CanvasProps {
   pdfDoc: any; // PDF.js doc instance
@@ -573,9 +444,6 @@ export const Canvas: React.FC<CanvasProps> = ({ pdfDoc }) => {
           );
         })}
       </div>
-
-      {/* Floating Zoom Widget */}
-      <MemoizedZoomWidget />
     </div>
   );
 };

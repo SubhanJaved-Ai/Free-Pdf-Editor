@@ -135,3 +135,73 @@ export function getFontFallbackStack(fontFamily: string): string {
   }
   return `"${fontFamily}", Arial, Helvetica, "Clear Sans", sans-serif`;
 }
+
+// ─── Export-time Font Embedding ────────────────────────────────────────────────
+// Module-level cache: keyed by "fontFamily|weight|style", value is the woff/ttf ArrayBuffer.
+// Populated lazily during export; reused across calls without re-fetching.
+const exportFontCache = new Map<string, ArrayBuffer>();
+
+/**
+ * Fetch a font file from Google Fonts as a raw ArrayBuffer for pdf-lib embedding.
+ *
+ * Returns null if the font is not in GOOGLE_FONTS_MAP or if network fails.
+ * Callers must fall back to a standard PDF StandardFont in that case.
+ */
+export async function fetchFontForExport(
+  fontFamily: string,
+  bold = false,
+  italic = false
+): Promise<ArrayBuffer | null> {
+  if (typeof window === 'undefined') return null;
+
+  const cacheKey = `${fontFamily}|${bold ? '700' : '400'}|${italic ? '1' : '0'}`;
+  if (exportFontCache.has(cacheKey)) {
+    return exportFontCache.get(cacheKey)!;
+  }
+
+  const key = fontFamily.toLowerCase().trim();
+  if (!GOOGLE_FONTS_MAP[key]) return null;
+
+  try {
+    const weight = bold ? 700 : 400;
+    const familyEncoded = encodeURIComponent(fontFamily);
+    const cssUrl = italic
+      ? `https://fonts.googleapis.com/css2?family=${familyEncoded}:ital,wght@1,${weight}&display=swap`
+      : `https://fonts.googleapis.com/css2?family=${familyEncoded}:wght@${weight}&display=swap`;
+
+    const cssRes = await fetch(cssUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    });
+    if (!cssRes.ok) return null;
+
+    const cssText = await cssRes.text();
+
+    // Extract first font URL from the @font-face CSS block
+    const urlMatch = cssText.match(/src:\s*url\(([^)]+)\)/);
+    if (!urlMatch) return null;
+
+    const fontUrl = urlMatch[1].replace(/['"]/g, '');
+    const fontRes = await fetch(fontUrl);
+    if (!fontRes.ok) return null;
+
+    const buffer = await fontRes.arrayBuffer();
+    exportFontCache.set(cacheKey, buffer);
+    return buffer;
+  } catch (e) {
+    console.warn(`[fontLoader] Could not fetch font for export: ${fontFamily}`, e);
+    return null;
+  }
+}
+
+/**
+ * Standard PDF font families that pdf-lib supports natively (no embedding needed).
+ */
+export const STANDARD_PDF_FONTS = new Set([
+  'helvetica', 'helvetica neue', 'arial',
+  'times new roman', 'times', 'georgia',
+  'courier new', 'courier',
+]);
+
+export function isStandardPdfFont(fontFamily: string): boolean {
+  return STANDARD_PDF_FONTS.has(fontFamily.toLowerCase().trim());
+}

@@ -58,6 +58,8 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
   } = useEditorStore();
 
   const [isSignatureOpen, setIsSignatureOpen] = React.useState(false);
+  const [isEditingFileName, setIsEditingFileName] = React.useState(false);
+  const [fileNameInput, setFileNameInput] = React.useState('');
   const [signatureText, setSignatureText] = React.useState('John Doe');
   const [selectedFont, setSelectedFont] = React.useState('Great Vibes');
   const [signatureTab, setSignatureTab] = React.useState<'type' | 'draw' | 'upload'>('type');
@@ -274,6 +276,9 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
     { id: 'text', label: 'Text', icon: Type, shortcut: 'T', tip: 'Add or edit text (T)' },
     { id: 'image', label: 'Image', icon: ImageIcon, shortcut: 'I', tip: 'Upload & insert image (I)' },
     { id: 'signature', label: 'Signature', icon: PenTool, shortcut: 'S', tip: 'Create or drop signature (S)' },
+  ] as const;
+
+  const markupTools = [
     { id: 'shape', label: 'Shape', icon: Square, shortcut: 'U', tip: 'Insert shape (U)' },
     { id: 'draw', label: 'Draw', icon: Pencil, shortcut: 'P', tip: 'Freehand drawing (P)' },
     { id: 'erase', label: 'Eraser', icon: Eraser, shortcut: 'E', tip: 'Erase content (E)' },
@@ -319,9 +324,44 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
         {/* File Name & Auto-Save Badge */}
         <div className="flex items-center gap-2 min-w-0 hidden md:flex">
           <FileText size={15} className="text-on-surface-variant/70 flex-shrink-0" />
-          <span className="text-xs font-semibold text-on-surface truncate max-w-[140px] lg:max-w-[200px]" title={fileName || 'Document'}>
-            {fileName || 'Untitled Document.pdf'}
-          </span>
+          {isEditingFileName ? (
+            <input
+              type="text"
+              value={fileNameInput}
+              onChange={(e) => setFileNameInput(e.target.value)}
+              onBlur={() => {
+                setIsEditingFileName(false);
+                if (fileNameInput.trim()) {
+                  useEditorStore.setState({ fileName: fileNameInput.trim() });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setIsEditingFileName(false);
+                  if (fileNameInput.trim()) {
+                    useEditorStore.setState({ fileName: fileNameInput.trim() });
+                  }
+                }
+                if (e.key === 'Escape') {
+                  setFileNameInput(fileName || 'Untitled Document.pdf');
+                  setIsEditingFileName(false);
+                }
+              }}
+              autoFocus
+              className="text-xs font-semibold text-on-surface bg-surface-container border border-primary rounded px-1.5 py-0.5 max-w-[160px] focus:outline-none"
+            />
+          ) : (
+            <span
+              onClick={() => {
+                setFileNameInput(fileName || 'Untitled Document.pdf');
+                setIsEditingFileName(true);
+              }}
+              className="text-xs font-semibold text-on-surface truncate max-w-[140px] lg:max-w-[200px] cursor-pointer hover:underline"
+              title="Click to rename document"
+            >
+              {fileName || 'Untitled Document.pdf'}
+            </span>
+          )}
           <SaveStatusIndicator />
         </div>
       </div>
@@ -529,7 +569,35 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
 
         <div className="h-4 w-px bg-outline-variant/30 flex-shrink-0" />
 
-        {/* GROUP 3: Undo / Redo History */}
+        {/* GROUP 3: Markup & Annotation Tools (Shape, Draw, Eraser) */}
+        <div className="flex items-center gap-0.5 bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline-variant/20">
+          {markupTools.map((tool) => {
+            const Icon = tool.icon;
+            const isActive = activeTool === tool.id;
+            return (
+              <button
+                key={tool.id}
+                onClick={() => {
+                  setActiveTool(tool.id);
+                  setIsSignatureOpen(false);
+                }}
+                title={tool.tip}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 relative group ${
+                  isActive 
+                    ? 'bg-primary text-on-primary shadow-sm ring-1 ring-primary/30' 
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                }`}
+              >
+                <Icon size={15} />
+                <span className="hidden xl:inline">{tool.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="h-4 w-px bg-outline-variant/30 flex-shrink-0" />
+
+        {/* GROUP 4: Undo / Redo History */}
         <div className="flex items-center gap-0.5 bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline-variant/20">
           <button
             onClick={undo}

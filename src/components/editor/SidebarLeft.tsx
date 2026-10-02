@@ -134,31 +134,24 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
       style={{ width: `${leftSidebarWidth}px` }}
     >
       {/* Sidebar Header */}
-      <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between relative flex-shrink-0">
-        <div className="flex items-center gap-2.5 text-on-surface">
-          <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-            <Layers size={16} />
-          </div>
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface">Pages Overview</h2>
-            <p className="text-[10px] text-on-surface-variant">Reorder, duplicate & manage</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold">
-            {pageOrders.length} {pageOrders.length === 1 ? 'Page' : 'Pages'}
+      <div className="px-4 pt-4 pb-3 border-b border-outline-variant/20 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-primary/10 text-primary"><Layers size={15} /></div>
+          <h2 className="text-[11px] font-bold text-on-surface tracking-wide">Pages</h2>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container border border-outline-variant/30 text-on-surface-variant">
+            {pageOrders.length}
           </span>
-          {isMobileOpen && (
-            <button
-              type="button"
-              onClick={() => setMobileSidebarOpen(null)}
-              className="md:hidden flex items-center justify-center w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface active:scale-90 transition-all"
-              aria-label="Close panel"
-            >
-              <X size={15} strokeWidth={2.5} />
-            </button>
-          )}
         </div>
+        {isMobileOpen && (
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(null)}
+            className="md:hidden flex items-center justify-center w-7 h-7 rounded-full bg-surface-container-high border border-outline-variant/40 text-on-surface-variant hover:text-on-surface active:scale-90 transition-all"
+            aria-label="Close panel"
+          >
+            <X size={14} strokeWidth={2.5} />
+          </button>
+        )}
       </div>
 
       {/* Pages Thumbnails Stack */}
@@ -172,88 +165,105 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
           const thumbnailHeight = 145 * aspectRatio;
 
           return (
-            <div
-              key={`${pageIdx}-${visualIdx}`}
-              onClick={() => scrollToPageIndex(pageIdx)}
-              className={`group flex flex-col items-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer relative ${
-                isSelected 
-                  ? 'bg-primary/5 border-primary shadow-md ring-2 ring-primary/30' 
-                  : 'bg-surface-container-lowest/80 border-outline-variant/30 hover:border-outline-variant/60 hover:bg-surface-container-high/60 shadow-2xs'
-              }`}
-            >
-              {/* Floating Reorder Actions */}
-              <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20">
+            <React.Fragment key={`${pageIdx}-${visualIdx}`}>
+              {/* Insert-between strip — hover-only, appears between pages */}
+              {visualIdx > 0 && (
                 <button
                   type="button"
-                  onClick={(e) => handleMoveUp(e, visualIdx)}
-                  disabled={visualIdx === 0}
-                  className="p-1 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-primary disabled:opacity-20 transition shadow-xs"
-                  title="Move Page Up"
+                  onClick={(e) => handleInsertBlank(e, pageOrders[visualIdx - 1])}
+                  className="group/insert w-full h-4 flex items-center justify-center gap-1 opacity-0 hover:opacity-100 transition-opacity -my-1 z-10 relative cursor-pointer"
+                  title="Insert blank page here"
                 >
-                  <ArrowUp size={12} />
+                  <div className="flex-1 h-px bg-primary/40 group-hover/insert:bg-primary transition-colors" />
+                  <div className="px-1.5 py-0.5 rounded-full bg-primary text-white text-[8px] font-bold flex items-center gap-0.5 flex-shrink-0 shadow-sm">
+                    <Plus size={8} /> Insert
+                  </div>
+                  <div className="flex-1 h-px bg-primary/40 group-hover/insert:bg-primary transition-colors" />
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleMoveDown(e, visualIdx)}
-                  disabled={visualIdx === pageOrders.length - 1}
-                  className="p-1 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-primary disabled:opacity-20 transition shadow-xs"
-                  title="Move Page Down"
-                >
-                  <ArrowDown size={12} />
-                </button>
-              </div>
+              )}
 
-              {/* Floating Quick Operations */}
-              <div className="absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20">
-                <button
-                  type="button"
-                  onClick={(e) => handleDuplicate(e, pageIdx)}
-                  className="p-1.5 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-primary transition shadow-xs"
-                  title="Duplicate Page"
-                >
-                  <Copy size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleDelete(e, pageIdx)}
-                  className="p-1.5 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-error transition shadow-xs"
-                  title="Delete Page"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
-
-              {/* Thumbnail Container */}
-              <div 
-                className={`${layoutMode === 'horizontal' ? 'w-28' : 'w-44'} overflow-hidden rounded-xl bg-white border border-outline-variant/40 flex items-center justify-center relative shadow-xs group-hover:shadow-sm transition-shadow`}
-                style={{ height: `${layoutMode === 'horizontal' ? thumbnailHeight * 0.66 : thumbnailHeight}px` }}
+              <div
+                onClick={() => scrollToPageIndex(pageIdx)}
+                className={`group flex flex-col items-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer relative ${
+                  isSelected
+                    ? 'bg-primary/5 border-primary shadow-md ring-2 ring-primary/40'
+                    : 'bg-surface-container-lowest/80 border-outline-variant/30 hover:border-outline-variant/60 hover:bg-surface-container-high/60 shadow-2xs'
+                }`}
               >
-                <PageThumbnail pdfDoc={pdfDoc} pageIdx={pageIdx} />
-              </div>
+                {/* Floating Reorder Actions */}
+                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20">
+                  <button
+                    type="button"
+                    onClick={(e) => handleMoveUp(e, visualIdx)}
+                    disabled={visualIdx === 0}
+                    className="p-1 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-primary disabled:opacity-20 transition shadow-xs"
+                    title="Move Page Up"
+                  >
+                    <ArrowUp size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleMoveDown(e, visualIdx)}
+                    disabled={visualIdx === pageOrders.length - 1}
+                    className="p-1 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-primary disabled:opacity-20 transition shadow-xs"
+                    title="Move Page Down"
+                  >
+                    <ArrowDown size={12} />
+                  </button>
+                </div>
 
-              {/* Page Label & Dimensions */}
-              <div className="w-full flex items-center justify-between mt-2.5 px-1">
-                <span className="text-xs font-bold text-on-surface flex items-center gap-1.5">
-                  <FileText size={13} className={isSelected ? 'text-primary' : 'text-on-surface-variant/60'} />
-                  Page {visualIdx + 1}
-                </span>
-                <span className="text-[9px] font-mono text-on-surface-variant/70">
-                  {Math.round(dims.width)} × {Math.round(dims.height)}
-                </span>
-              </div>
+                {/* Floating Quick Operations */}
+                <div className="absolute top-2.5 right-2.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-20">
+                  <button
+                    type="button"
+                    onClick={(e) => handleDuplicate(e, pageIdx)}
+                    className="p-1.5 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-primary transition shadow-xs"
+                    title="Duplicate Page"
+                  >
+                    <Copy size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDelete(e, pageIdx)}
+                    className="p-1.5 rounded-lg bg-surface/90 border border-outline-variant/40 text-on-surface-variant hover:text-error transition shadow-xs"
+                    title="Delete Page"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
 
-              {/* Insert Blank Page Trigger */}
-              <button
-                type="button"
-                onClick={(e) => handleInsertBlank(e, pageIdx)}
-                className="w-full mt-2.5 py-1.5 flex items-center justify-center gap-1 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-[10px] font-bold text-on-surface-variant hover:text-on-surface active:scale-98 transition-all"
-              >
-                <Plus size={12} className="text-primary" />
-                <span>Add Blank Page</span>
-              </button>
-            </div>
+                {/* Thumbnail Container */}
+                <div
+                  className={`${layoutMode === 'horizontal' ? 'w-28' : 'w-44'} overflow-hidden rounded-xl bg-white border border-outline-variant/40 flex items-center justify-center relative shadow-xs group-hover:shadow-sm transition-shadow`}
+                  style={{ height: `${layoutMode === 'horizontal' ? thumbnailHeight * 0.66 : thumbnailHeight}px` }}
+                >
+                  <PageThumbnail pdfDoc={pdfDoc} pageIdx={pageIdx} />
+                </div>
+
+                {/* Page Label & Dimensions */}
+                <div className="w-full flex items-center justify-between mt-2.5 px-1">
+                  <span className={`text-xs font-bold flex items-center gap-1.5 ${isSelected ? 'text-primary' : 'text-on-surface'}`}>
+                    <FileText size={12} className={isSelected ? 'text-primary' : 'text-on-surface-variant/50'} />
+                    Page {visualIdx + 1}
+                  </span>
+                  <span className="text-[9px] font-mono text-on-surface-variant/60">
+                    {Math.round(dims.width)} × {Math.round(dims.height)}
+                  </span>
+                </div>
+              </div>
+            </React.Fragment>
           );
         })}
+
+        {/* Append blank page at end */}
+        <button
+          type="button"
+          onClick={(e) => handleInsertBlank(e, pageOrders[pageOrders.length - 1])}
+          className="w-full mt-1 py-2.5 flex items-center justify-center gap-1.5 rounded-xl bg-surface-container/60 hover:bg-primary/8 border border-dashed border-outline-variant/50 hover:border-primary/50 text-[11px] font-bold text-on-surface-variant hover:text-primary transition-all active:scale-98"
+        >
+          <Plus size={13} className="text-primary" />
+          Add Blank Page
+        </button>
       </div>
     </aside>
   );

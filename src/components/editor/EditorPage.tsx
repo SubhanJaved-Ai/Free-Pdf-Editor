@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useEditorStore, EditorElement } from '../../store/useEditorStore';
 import { FloatingToolbar } from './FloatingToolbar';
+import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 import { renderShapeSvgContent } from '../../utils/shapeDefinitions';
 import { loadWebFontIfNeeded, getFontFallbackStack } from '../../utils/fontLoader';
 
@@ -47,6 +48,13 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
   const [pageHeight, setPageHeight] = useState(842);
   const [isRendered, setIsRendered] = useState(false);
   const [debugLogs, setDebugLogs] = useState<any>({});
+
+  // ID of the text element currently being hovered — drives cursor-text affordance + dashed outline
+  const [hoveredTextId, setHoveredTextId] = useState<string | null>(null);
+
+  // Pixel rect of the active (editing) text element, used to position FloatingFormatToolbar
+  const [activeElRect, setActiveElRect] = useState<{ top: number; left: number; width: number } | null>(null);
+
 
   
   // Pen Drawing State
@@ -497,7 +505,6 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
       setSelectedElementIds([newId]);
       useEditorStore.setState({ activeTool: 'select' }); // Auto switch back
     } 
-    
     else if (activeTool === 'shape') {
       const { shapeType } = useEditorStore.getState();
       addElement({
@@ -704,20 +711,34 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
     
     lastClickRef.current = { id: elId, time: now };
 
-    if (isDoubleClick && el.type === 'text') {
-      setActiveElementId(elId);
-      setDragState(null); // Ensure drag state is cleared/disabled on double click
-      return;
-    } else if (activeTool === 'text' && el.type === 'text' && !isDoubleClick) {
-      // If using text tool, a single click should immediately enter edit mode on existing text
+    // ── Single-click text editing (Adobe Acrobat model) ────────────────────
+    // In select mode: single click on any text element → immediately enter edit mode.
+    // No double-click required, no tool switching needed.
+    if (el.type === 'text' && (activeTool === 'select' || activeTool === 'text')) {
       setActiveElementId(elId);
       setSelectedElementIds([elId]);
+      setDragState(null);
+
+      // Measure the element's pixel rect so FloatingFormatToolbar can position itself
+      const elNode = document.getElementById(`el-${elId}`);
+      if (elNode && containerRef.current) {
+        const elDomRect = elNode.getBoundingClientRect();
+        const containerDomRect = containerRef.current.getBoundingClientRect();
+        setActiveElRect({
+          top: elDomRect.top - containerDomRect.top,
+          left: elDomRect.left - containerDomRect.left,
+          width: elDomRect.width,
+        });
+      }
+      return;
+    }
+
+    if (isDoubleClick && el.type === 'text') {
+      setActiveElementId(elId);
       setDragState(null);
       return;
     }
     
-    // Disable dragging if currently editing this text element
-    if (activeElementId === elId) return;
     
     setSelectedElementIds([elId]);
     if (action !== 'drag') {
@@ -847,6 +868,15 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                 style={elementStyle}
                 onPointerDown={(e) => handleElementPointerDown(e, el.id, 'drag')}
                 onClick={(e) => e.stopPropagation()}
+                onMouseEnter={(e: React.MouseEvent) => {
+                  if (el.type === 'text') setHoveredTextId(el.id);
+                  if (activeTool === 'erase' && e.buttons === 1) {
+                    deleteElement(el.id);
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (el.type === 'text') setHoveredTextId(prev => prev === el.id ? null : prev);
+                }}
                 onContextMenu={(e) => {
                   if (el.isOriginalPdfElement) {
                     e.preventDefault();
@@ -860,14 +890,13 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                     setActiveElementId(el.id);
                   }
                 }}
-                onMouseEnter={(e) => {
-                  if (activeTool === 'erase' && e.buttons === 1) {
-                    deleteElement(el.id);
-                  }
-                }}
                 className={`absolute group pointer-events-auto ${
                   isSelected && (activeTool === 'select' || activeTool === 'text' || activeTool === 'image')
                     ? 'ring-1 ring-primary cursor-move z-20' 
+                    : (el.type === 'text' && (activeTool === 'select' || activeTool === 'text'))
+                    ? (hoveredTextId === el.id && !isEditing
+                        ? 'ring-1 ring-blue-400/60 ring-dashed cursor-text z-10'
+                        : 'hover:ring-1 hover:ring-blue-400/40 hover:ring-dashed cursor-text z-10')
                     : (activeTool === 'select' || activeTool === 'text' || activeTool === 'image')
                     ? 'hover:ring-1 hover:ring-primary/40 hover:bg-primary/[0.03] cursor-pointer z-10'
                     : ''
@@ -893,6 +922,26 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         </button>
                       </div>
                     )}
+
+                    {/* White mask div — sits between the PDF image and the text overlay.
+                        Precisely covers the original PDF-rendered text so the editable text
+                        does not double-render on top of the original. Sized with +4px padding
+                        to catch subpixel edge bleed from the PDF renderer. */}
+                    {el.isOriginalPdfElement && (isEditing || el.isModified) && (
+                      <div
+                        className="absolute pointer-events-none"
+                        style={{
+                          // Extend 4px beyond the element bounds in all directions
+                          top: '-4px',
+                          left: '-4px',
+                          right: '-4px',
+                          bottom: '-4px',
+                          backgroundColor: '#ffffff',
+                          zIndex: 1,
+                        }}
+                      />
+                    )}
+
                     <div
                       id={`text-edit-${el.id}`}
                       key={isEditing ? 'edit' : 'view'}
@@ -926,6 +975,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         if (newText.trim() === '') newText = '\u00A0'; // Non-breaking space to keep it selectable
                         updateElement(el.id, { text: newText });
                         setActiveElementId(null);
+                        setActiveElRect(null);
                       }}
                       onKeyDown={(e) => {
                         // Prevent global keyboard shortcuts from firing
@@ -958,14 +1008,18 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         })(),
                         fontWeight: el.fontWeight || 'normal',
                         fontStyle: el.fontStyle || 'normal',
+                        // Always show the text in its actual color once editing starts.
+                        // For unmodified original elements in view mode the PDF image shows through (transparent).
                         color: (isEditing || el.isModified || !el.isOriginalPdfElement) ? (el.color || '#000000') : 'transparent',
-                        backgroundColor: (isEditing || (el.isOriginalPdfElement && el.isModified)) ? '#ffffff' : 'transparent',
+                        backgroundColor: 'transparent', // mask is handled by the dedicated white div above
                         textAlign: el.align || 'left',
                         textDecoration: el.textDecoration || 'none',
                         lineHeight: el.lineHeight || 1.2,
                         letterSpacing: el.letterSpacing ? `${el.letterSpacing}px` : undefined,
                         direction: /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(el.text || '') ? 'rtl' : 'ltr',
                         userSelect: 'text',
+                        position: 'relative',
+                        zIndex: 2,
                       }}
                     >
                       {el.text}
@@ -1197,7 +1251,39 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
             </div>
           )}
 
-          {/* Contextual Floating Actions overlay above selected element */}
+          {/* Contextual Floating Format Toolbar — anchored above the active text element */}
+          {activeElementId && (() => {
+            const activeEl = pageElements.find(el => el.id === activeElementId);
+            if (!activeEl || activeEl.type !== 'text') return null;
+
+            // Compute pixel position relative to the overlay container
+            const containerEl = containerRef.current;
+            let rect = activeElRect;
+            if (!rect && containerEl) {
+              const elNode = document.getElementById(`el-${activeElementId}`);
+              if (elNode) {
+                const domRect = elNode.getBoundingClientRect();
+                const cRect = containerEl.getBoundingClientRect();
+                rect = {
+                  top: domRect.top - cRect.top,
+                  left: domRect.left - cRect.left,
+                  width: domRect.width,
+                };
+              }
+            }
+
+            if (!rect) return null;
+
+            return (
+              <FloatingFormatToolbar
+                activeElement={activeEl}
+                elementRect={rect}
+                onClose={() => setActiveElementId(null)}
+              />
+            );
+          })()}
+
+          {/* Classic element selection floating action bar (non-text elements) */}
           {selectedElement && activeTool === 'select' && !activeElementId && (
             <FloatingToolbar 
               selectedElement={selectedElement} 

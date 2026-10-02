@@ -6,6 +6,7 @@ import { useEditorStore } from '../../store/useEditorStore';
 import { ToolbarTop } from '../../components/editor/ToolbarTop';
 import { SidebarLeft } from '../../components/editor/SidebarLeft';
 import { SidebarRight } from '../../components/editor/SidebarRight';
+import { StatusBar } from '../../components/editor/StatusBar';
 import { Canvas } from '../../components/editor/Canvas';
 import { exportEditedPdf } from '../../utils/pdfExporter';
 import { parsePdfLayout } from '../../utils/pdfParser';
@@ -212,7 +213,7 @@ export default function EditorPage() {
     
     setIsExporting(true);
     try {
-      const completedBytes = await exportEditedPdf(
+      const result = await exportEditedPdf(
         currentPdfBytes,
         currentElements,
         currentPageOrders,
@@ -222,8 +223,28 @@ export default function EditorPage() {
           optimizeSize: false
         }
       );
+
+      // Warn the user about any fonts that could not be embedded truthfully
+      if (result.substitutedFonts.length > 0) {
+        const fontList = result.substitutedFonts.join(', ');
+        const proceed = window.confirm(
+          `⚠️ Font Substitution Notice\n\n` +
+          `The following fonts used in your document are not available for embedding and ` +
+          `will be substituted with standard PDF fonts in the download:\n\n` +
+          `• ${result.substitutedFonts.join('\n• ')}\n\n` +
+          `The document will look correct in this editor but may appear slightly different ` +
+          `in PDF viewers. Click OK to download anyway, or Cancel to go back.\n\n` +
+          `(Tip: Using fonts like Open Sans, Roboto, Lato, Poppins, or Inter will embed correctly.)`
+        );
+        if (!proceed) {
+          setIsExporting(false);
+          return;
+        }
+        console.info(`[EXPORT] Font substitution occurred for: ${fontList}`);
+      }
+
       // Trigger file download
-      const blob = new Blob([completedBytes as any], { type: 'application/pdf' });
+      const blob = new Blob([result.bytes as any], { type: 'application/pdf' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = currentFileName ? `veltis_${currentFileName}` : 'veltis_document.pdf';
@@ -237,6 +258,7 @@ export default function EditorPage() {
       setIsExporting(false);
     }
   };
+
 
   const handleSaveChanges = async () => {
     setIsSaving(true);
@@ -503,6 +525,9 @@ export default function EditorPage() {
           </>
         )}
       </div>
+
+      {/* Persistent Bottom Status Bar */}
+      <StatusBar />
 
       {/* Signature Modals Dialog overlay */}
       {showSignatureModal && (

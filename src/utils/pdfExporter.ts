@@ -2,6 +2,7 @@
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import { EditorElement, PageDimension } from '../store/useEditorStore';
 import { renderShapeSvgContent } from './shapeDefinitions';
+import { fetchFontForExport, isStandardPdfFont } from './fontLoader';
 
 // ─── Color Helpers ────────────────────────────────────────────────────────────
 
@@ -401,23 +402,24 @@ export interface ExportSettings {
   optimizeSize: boolean;
 }
 
+export interface ExportResult {
+  bytes: Uint8Array;
+  /** Font families that could not be embedded and fell back to a standard PDF font */
+  substitutedFonts: string[];
+}
+
 export async function exportEditedPdf(
   originalPdfBytes: Uint8Array,
   elements: EditorElement[],
   pageOrders: number[],
   pageDimensions: PageDimension[],
   settings: ExportSettings
-): Promise<Uint8Array> {
+): Promise<ExportResult> {
   const pdfDoc = await PDFDocument.load(originalPdfBytes);
   const originalPages = pdfDoc.getPages();
   const targetPdf = await PDFDocument.create();
 
-  console.log('==========================================');
-  console.log('[EXPORT] Total elements:', elements.length);
-  console.log('[EXPORT] Shape elements:', elements.filter(e => e.type === 'shape').length);
-  console.log('==========================================');
-
-  // Embed standard fonts
+  // ── Phase 1: Embed standard PDF fonts (always available) ──────────────────
   const fontCache: Record<string, any> = {
     'Helvetica': await targetPdf.embedFont(StandardFonts.Helvetica),
     'Helvetica-Bold': await targetPdf.embedFont(StandardFonts.HelveticaBold),
@@ -429,6 +431,45 @@ export async function exportEditedPdf(
     'Times-Bold': await targetPdf.embedFont(StandardFonts.TimesRomanBold),
     'Times-Italic': await targetPdf.embedFont(StandardFonts.TimesRomanItalic),
   };
+
+  // ── Phase 2: Collect and embed custom (non-standard) fonts ────────────────
+  // We scan every text element that will actually be drawn (new elements or modified originals)
+  // and attempt to embed the font from Google Fonts so the exported PDF is honest.
+  const substitutedFonts: string[] = [];
+  const customFontVariants = new Set<string>();
+
+  for (const el of elements) {
+    if (el.type !== 'text' || !el.text) continue;
+    // Only process elements that will be drawn (not untouched original PDF elements)
+    if (el.isOriginalPdfElement && !el.isModified && !el.isDeleted) continue;
+
+    const family = el.fontFamily || 'Helvetica';
+    if (isStandardPdfFont(family)) continue; // handled by standard font cache above
+
+    const bold = el.fontWeight === 'bold';
+    const italic = el.fontStyle === 'italic';
+    const variantKey = `${family}|${bold ? '700' : '400'}|${italic ? '1' : '0'}`;
+    customFontVariants.add(variantKey);
+  }
+
+  for (const variantKey of customFontVariants) {
+    const [family, weight, italicFlag] = variantKey.split('|');
+    const bold = weight === '700';
+    const italic = italicFlag === '1';
+
+    const buffer = await fetchFontForExport(family, bold, italic);
+    if (buffer) {
+      try {
+        const embedded = await targetPdf.embedFont(buffer, { subset: true });
+        fontCache[variantKey] = embedded;
+      } catch (e) {
+        console.warn(`[EXPORT] Failed to embed font ${family}:`, e);
+        if (!substitutedFonts.includes(family)) substitutedFonts.push(family);
+      }
+    } else {
+      if (!substitutedFonts.includes(family)) substitutedFonts.push(family);
+    }
+  }
 
   for (let visualIdx = 0; visualIdx < pageOrders.length; visualIdx++) {
     const origIdx = pageOrders[visualIdx];
@@ -475,44 +516,58 @@ export async function exportEditedPdf(
 
       // ── Text ──────────────────────────────────────────────────────────────
       if (el.type === 'text' && el.text) {
-        const fam = (el.fontFamily || 'Helvetica').toLowerCase();
-        let fontKey = 'Helvetica';
-
-        if (fam.includes('courier') || fam.includes('mono') || fam.includes('code')) {
-          fontKey = 'Courier';
-        } else if (fam.includes('times') || fam.includes('roman') || fam.includes('georgia') || fam.includes('garamond') || fam.includes('palatino') || fam.includes('cambria') || fam.includes('serif')) {
-          fontKey = 'Times-Roman';
-        }
-
+        const family = el.fontFamily || 'Helvetica';
         const isBold = el.fontWeight === 'bold';
         const isItalic = el.fontStyle === 'italic';
 
-        if (fontKey === 'Times-Roman') {
-          if (isBold && isItalic) fontKey = 'Times-BoldItalic'; // fallback or Times-Bold
-          else if (isBold) fontKey = 'Times-Bold';
-          else if (isItalic) fontKey = 'Times-Italic';
-        } else if (fontKey === 'Courier') {
-          if (isBold) fontKey = 'Courier-Bold';
-          else if (isItalic) fontKey = 'Courier-Oblique';
-        } else { // Helvetica
-          if (isBold) fontKey = 'Helvetica-Bold';
-          else if (isItalic) fontKey = 'Helvetica-Oblique';
+        // Attempt to use a custom-embedded font first
+        const customKey = `${family}|${isBold ? '700' : '400'}|${isItalic ? '1' : '0'}`;
+        let font = fontCache[customKey];
+
+        if (!font) {
+          // Fall back to closest standard PDF font
+          const fam = family.toLowerCase();
+          let fontKey = 'Helvetica';
+
+          if (fam.includes('courier') || fam.includes('mono') || fam.includes('code')) {
+            fontKey = 'Courier';
+          } else if (fam.includes('times') || fam.includes('roman') || fam.includes('georgia') || fam.includes('garamond') || fam.includes('palatino') || fam.includes('cambria') || fam.includes('serif')) {
+            fontKey = 'Times-Roman';
+          }
+
+          if (fontKey === 'Times-Roman') {
+            if (isBold && isItalic) fontKey = 'Times-Bold';
+            else if (isBold) fontKey = 'Times-Bold';
+            else if (isItalic) fontKey = 'Times-Italic';
+          } else if (fontKey === 'Courier') {
+            if (isBold) fontKey = 'Courier-Bold';
+            else if (isItalic) fontKey = 'Courier-Oblique';
+          } else {
+            if (isBold) fontKey = 'Helvetica-Bold';
+            else if (isItalic) fontKey = 'Helvetica-Oblique';
+          }
+
+          font = fontCache[fontKey] || fontCache['Helvetica'];
         }
 
-        const font = fontCache[fontKey] || fontCache['Helvetica'];
         const firstLineY = pageH - ((el.y / 100) * pageH) - (el.fontSize || 14) * 0.85;
 
-        page.drawText(el.text, {
-          x: elX,
-          y: firstLineY,
-          size: el.fontSize || 14,
-          font,
-          color: hexToRgb(el.color),
-          rotate: rot,
-          opacity: el.opacity,
-          maxWidth: elW,
-          lineHeight: el.lineHeight ? el.lineHeight * (el.fontSize || 14) : (el.fontSize || 14) * 1.2,
-        });
+        try {
+          page.drawText(el.text, {
+            x: elX,
+            y: firstLineY,
+            size: el.fontSize || 14,
+            font,
+            color: hexToRgb(el.color),
+            rotate: rot,
+            opacity: el.opacity,
+            maxWidth: elW,
+            lineHeight: el.lineHeight ? el.lineHeight * (el.fontSize || 14) : (el.fontSize || 14) * 1.2,
+          });
+        } catch (drawErr) {
+          // Some glyphs may not exist in the embedded subset — skip silently
+          console.warn('[EXPORT] drawText failed for element', el.id, drawErr);
+        }
       }
 
       // ── Image / Signature ─────────────────────────────────────────────────
@@ -666,7 +721,8 @@ export async function exportEditedPdf(
     }
   }
 
-  return await targetPdf.save({ useObjectStreams: !settings.optimizeSize });
+  const bytes = await targetPdf.save({ useObjectStreams: !settings.optimizeSize });
+  return { bytes, substitutedFonts };
 }
 
 export default exportEditedPdf;
