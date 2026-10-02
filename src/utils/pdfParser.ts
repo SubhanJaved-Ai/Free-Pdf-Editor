@@ -51,9 +51,64 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
     const height = viewport.height;
     pageDimensions.push({ width, height });
     
-    // ─── Extract text layout ───────────────────────────────────────────────────
+    // ─── Extract text layout and operator list ─────────────────────────────────
     const textContent = await page.getTextContent();
+    let operatorList: any = null;
+    const textChars: Array<{ char: string; color: string }> = [];
+
+    try {
+      operatorList = await page.getOperatorList();
+      if (operatorList && operatorList.fnArray) {
+        const fnArray = operatorList.fnArray;
+        const argsArray = operatorList.argsArray;
+        let currentFillColor = '#000000';
+        const colorStack: string[] = [];
+
+        for (let i = 0; i < fnArray.length; i++) {
+          const fn = fnArray[i];
+          const args = argsArray[i];
+
+          if (pdfjs.OPS && fn === pdfjs.OPS.save) {
+            colorStack.push(currentFillColor);
+          } else if (pdfjs.OPS && fn === pdfjs.OPS.restore) {
+            if (colorStack.length > 0) currentFillColor = colorStack.pop()!;
+          } else if (pdfjs.OPS && fn === pdfjs.OPS.setFillRGBColor) {
+            if (typeof args[0] === 'string' && args[0].startsWith('#')) {
+              currentFillColor = args[0];
+            } else if (Array.isArray(args) && args.length >= 3) {
+              const r = Math.round(args[0] * 255);
+              const g = Math.round(args[1] * 255);
+              const b = Math.round(args[2] * 255);
+              currentFillColor = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+            }
+          } else if (pdfjs.OPS && fn === pdfjs.OPS.setFillGray) {
+            const g = Math.round((args[0] ?? 0) * 255);
+            const hex = g.toString(16).padStart(2, '0');
+            currentFillColor = '#' + hex + hex + hex;
+          } else if (pdfjs.OPS && fn === pdfjs.OPS.setFillCMYKColor) {
+            const [c, m, y, k] = args;
+            const r = Math.round(255 * (1 - c) * (1 - k));
+            const g = Math.round(255 * (1 - m) * (1 - k));
+            const b = Math.round(255 * (1 - y) * (1 - k));
+            currentFillColor = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+          } else if (pdfjs.OPS && (fn === pdfjs.OPS.showText || fn === pdfjs.OPS.showSpacedText)) {
+            const glyphs = args[0];
+            if (Array.isArray(glyphs)) {
+              for (const g of glyphs) {
+                const char = typeof g === 'string' ? g : (g && typeof g.unicode === 'string' ? g.unicode : '');
+                if (char) {
+                  textChars.push({ char, color: currentFillColor });
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[PDF_PARSER] operatorList extraction failed:', e);
+    }
     
+    let charIdx = 0;
     textContent.items.forEach((item: any) => {
       if (!item.str || item.str.trim() === '') return;
       
@@ -89,14 +144,18 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
         item.str.length * fontSizePx * 0.55
       );
       
-      // ── Color: PDF.js ≥ 4.x populates item.color as Uint8ClampedArray([R, G, B])
-      // This is the actual rendered fill color from the PDF graphics state.
+      // ── Color: matched from PDF operator list graphics state
       let color = '#000000';
-      if (item.color && item.color.length >= 3) {
-        const r = item.color[0];
-        const g = item.color[1];
-        const b = item.color[2];
-        color = `rgb(${r},${g},${b})`;
+      if (textChars.length > 0) {
+        const firstNonSpace = item.str.trim()[0];
+        while (charIdx < textChars.length) {
+          if (textChars[charIdx].char === firstNonSpace) {
+            color = textChars[charIdx].color;
+            charIdx += Math.min(item.str.replace(/\s+/g, '').length, textChars.length - charIdx);
+            break;
+          }
+          charIdx++;
+        }
       }
       
       const isRtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(item.str);
@@ -126,6 +185,8 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
         fontWeight: fontDetails.fontWeight,
         fontStyle: fontDetails.fontStyle,
         color,
+        originalColor: color,
+        backgroundColor: '#ffffff',
         align: isRtl ? 'right' : 'left',
         isOriginalPdfElement: true,
         isModified: false,
@@ -140,7 +201,9 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
 
     // ─── Extract native PDF images from operator list ──────────────────────────
     try {
-      const operatorList = await page.getOperatorList();
+      if (!operatorList) {
+        operatorList = await page.getOperatorList();
+      }
       const fnArray = operatorList.fnArray;
       const argsArray = operatorList.argsArray;
       

@@ -508,8 +508,8 @@ export async function exportEditedPdf(
         const origW = (el.originalWidth ?? el.width) / 100 * pageW;
         const origH = (el.originalHeight ?? el.height) / 100 * pageH;
         const origY = pageH - ((el.originalY ?? el.y) / 100 * pageH) - origH;
-
-        page.drawRectangle({ x: origX - 2, y: origY - 2, width: origW + 4, height: origH + 4, color: rgb(1, 1, 1), opacity: 1.0 });
+        const maskColor = hexToRgb(el.backgroundColor || '#ffffff');
+        page.drawRectangle({ x: origX - 1, y: origY - 1, width: origW + 2, height: origH + 2, color: maskColor, opacity: 1.0 });
 
         if (el.isDeleted) continue;
       }

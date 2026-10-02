@@ -6,6 +6,7 @@ import { FloatingToolbar } from './FloatingToolbar';
 import { FloatingFormatToolbar } from './FloatingFormatToolbar';
 import { renderShapeSvgContent } from '../../utils/shapeDefinitions';
 import { loadWebFontIfNeeded, getFontFallbackStack } from '../../utils/fontLoader';
+import { extractColorsForElements } from '../../utils/colorExtractor';
 
 interface EditorPageProps {
   pageIndex: number;
@@ -379,6 +380,28 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
         await renderTask.promise;
         
         if (isCancelled) return;
+
+        // STEP 0.5: Sample text and background colors directly from the rendered PDF canvas
+        try {
+          const originalTextElements = useEditorStore.getState().elements.filter(
+            el => el.pageIndex === pageIndex && el.type === 'text' && el.isOriginalPdfElement && !el.isModified
+          );
+          if (originalTextElements.length > 0) {
+            const colorMap = extractColorsForElements(context, originalTextElements, canvas.width, canvas.height);
+            for (const [elId, colorInfo] of colorMap.entries()) {
+              if (colorInfo.textColor) {
+                useEditorStore.getState().updateElement(elId, {
+                  color: colorInfo.textColor,
+                  originalColor: colorInfo.textColor,
+                  backgroundColor: colorInfo.backgroundColor,
+                  isModified: false,
+                });
+              }
+            }
+          }
+        } catch (colorExtractErr) {
+          console.warn('[COLOR_EXTRACT] Failed to sample canvas text colors:', colorExtractErr);
+        }
         
         // STEP 1: Get page dimensions FIRST (before any image work)
         const baseViewport = page.getViewport({ scale: 1.0 });
@@ -923,11 +946,11 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                       <div
                         className="absolute pointer-events-none"
                         style={{
-                          top: '-4px',
-                          left: '-4px',
-                          right: '-4px',
-                          bottom: '-4px',
-                          backgroundColor: '#ffffff',
+                          top: '-1px',
+                          left: '-2px',
+                          right: '-2px',
+                          bottom: '-1px',
+                          backgroundColor: el.backgroundColor || '#ffffff',
                           zIndex: 1,
                         }}
                       />
@@ -1064,7 +1087,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         sel.getRangeAt(0).insertNode(document.createTextNode(text));
                         sel.collapseToEnd();
                       }}
-                      className="w-full h-full select-text outline-none border-none m-0 p-0 whitespace-pre-wrap break-words leading-tight min-h-[1em]"
+                      className="w-full h-full select-text outline-none border-none m-0 p-0 whitespace-pre-wrap break-words min-h-[1em]"
                       style={{
                         // ── Typography: always read from the ELEMENT, never from global store defaults.
                         // This is what makes editing feel like the original text — the styles are
@@ -1079,7 +1102,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         fontStyle:      el.fontStyle   || 'normal',
                         textDecoration: el.textDecoration || 'none',
                         textAlign:      el.align as any || 'left',
-                        lineHeight:     el.lineHeight  || 1.2,
+                        lineHeight:     el.lineHeight  || 1.15,
                         letterSpacing:  el.letterSpacing ? `${el.letterSpacing}px` : undefined,
                         direction:      /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(el.text || '') ? 'rtl' : 'ltr',
 

@@ -63,6 +63,8 @@ export interface EditorElement {
   originalY?: number;
   originalWidth?: number;
   originalHeight?: number;
+  originalColor?: string;
+  backgroundColor?: string;
 }
 
 export interface PageDimension {
@@ -438,14 +440,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             const hChanged      = !near(finalEl.height, el.originalHeight);
             const rChanged      = Math.abs(finalEl.rotation || 0) > 0.5;
             // Style changes (color, font, bold, etc.) also mark as modified
-            const styleChanged  = (updates.color !== undefined && updates.color !== el.color) ||
+            const effectiveOrigColor = el.originalColor || el.color;
+            const styleChanged  = (updates.color !== undefined && updates.color !== el.color && updates.color !== effectiveOrigColor) ||
                                   (updates.fontFamily !== undefined && updates.fontFamily !== el.fontFamily) ||
                                   (updates.fontSize !== undefined && updates.fontSize !== el.fontSize) ||
                                   (updates.fontWeight !== undefined && updates.fontWeight !== el.fontWeight) ||
                                   (updates.fontStyle !== undefined && updates.fontStyle !== el.fontStyle) ||
                                   (updates.textDecoration !== undefined && updates.textDecoration !== el.textDecoration);
 
-            isModified = textChanged || srcChanged || xChanged || yChanged || wChanged || hChanged || rChanged || styleChanged;
+            isModified = updates.isModified !== undefined
+              ? updates.isModified
+              : (textChanged || srcChanged || xChanged || yChanged || wChanged || hChanged || rChanged || styleChanged);
           }
           return { 
             ...el, 
