@@ -19,15 +19,19 @@ export const CreatorBranding: React.FC<CreatorBrandingProps> = ({
   const handleLinkedInClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isUrlConfigured) {
       e.preventDefault();
-      // Optional subtle notice or silent prevent until user provides real URL
     }
   };
 
   if (variant === 'toolbar') {
     return (
-      <div 
-        className={`flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-surface-container/70 hover:bg-surface-container border border-outline-variant/30 hover:border-primary/40 transition-all shadow-xs group select-none ${className}`}
-        title="Created & Engineered by Subhan Javed"
+      <a 
+        href={linkedInUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleLinkedInClick}
+        className={`flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-surface-container/70 hover:bg-surface-container border border-outline-variant/30 hover:border-[#0A66C2]/40 transition-all shadow-xs group select-none cursor-pointer ${className}`}
+        title={`Connect with ${name} on LinkedIn`}
+        aria-label={`Connect with ${name} on LinkedIn`}
       >
         {/* Circular Avatar */}
         <div className="relative w-6 h-6 rounded-full overflow-hidden ring-1.5 ring-primary/50 shadow-xs flex-shrink-0 bg-surface-container-high">
@@ -40,30 +44,30 @@ export const CreatorBranding: React.FC<CreatorBrandingProps> = ({
 
         {/* Text Byline */}
         <span className="text-[11px] font-medium text-on-surface-variant leading-none whitespace-nowrap">
-          Made by <span className="font-semibold text-on-surface group-hover:text-primary transition-colors">{name}</span>
+          Made by <span className="font-semibold text-on-surface group-hover:text-[#0A66C2] transition-colors">{name}</span>
         </span>
 
         {/* LinkedIn Connection Icon */}
-        <a
-          href={linkedInUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleLinkedInClick}
-          title={isUrlConfigured ? `Connect with ${name} on LinkedIn` : `LinkedIn profile for ${name} (Connecting soon)`}
-          className="text-on-surface-variant/70 hover:text-[#0A66C2] transition-colors p-0.5 rounded focus:outline-none flex items-center justify-center ml-0.5 cursor-pointer"
-          aria-label={`${name}'s LinkedIn profile`}
+        <span
+          className="text-on-surface-variant/70 group-hover:text-[#0A66C2] transition-colors p-0.5 rounded flex items-center justify-center ml-0.5"
+          aria-hidden="true"
         >
           <LinkedInIcon size={13} />
-        </a>
-      </div>
+        </span>
+      </a>
     );
   }
 
   if (variant === 'navbar') {
     return (
-      <div 
-        className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full bg-slate-100/90 border border-slate-200/90 hover:bg-white hover:border-indigo-200/80 shadow-2xs hover:shadow-xs transition-all group select-none ${className}`}
-        title="Created & Engineered by Subhan Javed"
+      <a 
+        href={linkedInUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleLinkedInClick}
+        className={`flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full bg-slate-100/90 border border-slate-200/90 hover:bg-white hover:border-[#0A66C2]/40 shadow-2xs hover:shadow-xs transition-all group select-none cursor-pointer ${className}`}
+        title={`Connect with ${name} on LinkedIn`}
+        aria-label={`Connect with ${name} on LinkedIn`}
       >
         {/* Circular Avatar */}
         <div className="relative w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden ring-2 ring-indigo-500/30 shadow-xs flex-shrink-0 bg-slate-200">
@@ -76,24 +80,19 @@ export const CreatorBranding: React.FC<CreatorBrandingProps> = ({
 
         {/* Text Byline */}
         <span className="text-xs font-medium text-slate-600 leading-none whitespace-nowrap">
-          Made by <span className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{name}</span>
+          Made by <span className="font-bold text-slate-900 group-hover:text-[#0A66C2] transition-colors">{name}</span>
         </span>
 
         <span className="h-3 w-px bg-slate-200/90" />
 
         {/* LinkedIn Icon */}
-        <a
-          href={linkedInUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleLinkedInClick}
-          title={isUrlConfigured ? `Connect with ${name} on LinkedIn` : `LinkedIn profile for ${name} (Connecting soon)`}
-          className="text-slate-400 hover:text-[#0A66C2] transition-colors p-0.5 rounded focus:outline-none flex items-center justify-center cursor-pointer"
-          aria-label={`${name}'s LinkedIn profile`}
+        <span
+          className="text-slate-400 group-hover:text-[#0A66C2] transition-colors p-0.5 rounded flex items-center justify-center"
+          aria-hidden="true"
         >
           <LinkedInIcon size={14} />
-        </a>
-      </div>
+        </span>
+      </a>
     );
   }
 
@@ -101,18 +100,33 @@ export const CreatorBranding: React.FC<CreatorBrandingProps> = ({
     return (
       <div className={`flex items-center gap-3.5 p-2.5 pr-4 rounded-2xl bg-slate-800/80 border border-slate-700/60 shadow-inner group ${className}`}>
         {/* Circular Avatar */}
-        <div className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-indigo-500/50 shadow-md flex-shrink-0 bg-slate-700">
+        <a
+          href={linkedInUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleLinkedInClick}
+          className="relative w-10 h-10 rounded-full overflow-hidden ring-2 ring-indigo-500/50 hover:ring-[#0A66C2] shadow-md flex-shrink-0 bg-slate-700 cursor-pointer transition-all"
+          title={`Connect with ${name} on LinkedIn`}
+          aria-label={`Connect with ${name} on LinkedIn`}
+        >
           <img
             src={avatar}
             alt={name}
             className="w-full h-full object-cover object-top"
           />
-        </div>
+        </a>
 
         <div className="flex flex-col">
-          <span className="text-xs font-semibold text-white leading-tight">
-            Made by <span className="text-indigo-400 font-bold">{name}</span>
-          </span>
+          <a
+            href={linkedInUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleLinkedInClick}
+            className="text-xs font-semibold text-white leading-tight hover:text-indigo-300 transition-colors cursor-pointer"
+            title={`Connect with ${name} on LinkedIn`}
+          >
+            Made by <span className="text-indigo-400 font-bold group-hover:text-[#0A66C2] transition-colors">{name}</span>
+          </a>
           <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
             <span>Software Engineer & Creator</span>
             <span className="text-slate-600">•</span>
@@ -121,12 +135,12 @@ export const CreatorBranding: React.FC<CreatorBrandingProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleLinkedInClick}
-              title={isUrlConfigured ? `Connect with ${name} on LinkedIn` : `LinkedIn profile for ${name} (Connecting soon)`}
-              className="text-slate-400 hover:text-[#0A66C2] transition-colors inline-flex items-center gap-1 cursor-pointer"
+              title={`Connect with ${name} on LinkedIn`}
+              className="text-slate-400 hover:text-[#0A66C2] transition-colors inline-flex items-center gap-1 cursor-pointer font-medium hover:underline"
               aria-label={`${name}'s LinkedIn profile`}
             >
               <LinkedInIcon size={12} />
-              <span className="text-[10px] font-medium">LinkedIn</span>
+              <span className="text-[10px] font-medium text-slate-300 hover:text-[#0A66C2]">LinkedIn</span>
             </a>
           </div>
         </div>
@@ -136,21 +150,23 @@ export const CreatorBranding: React.FC<CreatorBrandingProps> = ({
 
   // Default 'pill'
   return (
-    <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50/80 border border-indigo-100 text-indigo-900 text-xs font-medium ${className}`}>
+    <a
+      href={linkedInUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={handleLinkedInClick}
+      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50/80 hover:bg-indigo-100/90 border border-indigo-100 text-indigo-900 text-xs font-medium cursor-pointer transition-all group ${className}`}
+      title={`Connect with ${name} on LinkedIn`}
+      aria-label={`Connect with ${name} on LinkedIn`}
+    >
       <div className="w-5 h-5 rounded-full overflow-hidden ring-1 ring-indigo-400 flex-shrink-0">
         <img src={avatar} alt={name} className="w-full h-full object-cover object-top" />
       </div>
       <span>Made by <span className="font-bold">{name}</span></span>
-      <a
-        href={linkedInUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={handleLinkedInClick}
-        className="text-indigo-600 hover:text-[#0A66C2] transition-colors ml-0.5"
-      >
+      <span className="text-indigo-600 group-hover:text-[#0A66C2] transition-colors ml-0.5">
         <LinkedInIcon size={12} />
-      </a>
-    </div>
+      </span>
+    </a>
   );
 };
 

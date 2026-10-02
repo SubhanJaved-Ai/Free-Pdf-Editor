@@ -14,7 +14,7 @@ export const BRANDING_CONFIG = {
      * Backend placeholder ready for your LinkedIn URL.
      * When you share your LinkedIn URL, update it here.
      */
-    linkedInUrl: process.env.NEXT_PUBLIC_LINKEDIN_URL || "#",
+    linkedInUrl: process.env.NEXT_PUBLIC_LINKEDIN_URL || "https://www.linkedin.com/in/subhan-javed-2180a9440?utm_source=share_via&utm_content=profile&utm_medium=member_android",
   },
   app: {
     name: "VeltisPDF",
