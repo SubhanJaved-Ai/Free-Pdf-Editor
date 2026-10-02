@@ -423,15 +423,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           let isModified = el.isModified;
           if (el.isOriginalPdfElement) {
             const finalEl = { ...el, ...updates };
-            const textChanged = finalEl.text !== el.originalText;
-            const srcChanged = finalEl.src !== el.src;
-            const xChanged = finalEl.x !== el.originalX;
-            const yChanged = finalEl.y !== el.originalY;
-            const wChanged = finalEl.width !== el.originalWidth;
-            const hChanged = finalEl.height !== el.originalHeight;
-            const rChanged = (finalEl.rotation || 0) !== 0;
-            
-            isModified = textChanged || srcChanged || xChanged || yChanged || wChanged || hChanged || rChanged;
+            // Use a small tolerance (0.05%) to absorb floating-point rounding from the parser.
+            // Without this, tiny imprecisions like 10.000001 vs 10.0 would permanently
+            // mark every element as modified, causing the white mask to show in view mode.
+            const TOLERANCE = 0.05;
+            const near = (a: number | undefined, b: number | undefined) =>
+              Math.abs((a ?? 0) - (b ?? 0)) < TOLERANCE;
+
+            const textChanged   = finalEl.text !== el.originalText;
+            const srcChanged    = finalEl.src !== el.src;
+            const xChanged      = !near(finalEl.x, el.originalX);
+            const yChanged      = !near(finalEl.y, el.originalY);
+            const wChanged      = !near(finalEl.width, el.originalWidth);
+            const hChanged      = !near(finalEl.height, el.originalHeight);
+            const rChanged      = Math.abs(finalEl.rotation || 0) > 0.5;
+            // Style changes (color, font, bold, etc.) also mark as modified
+            const styleChanged  = (updates.color !== undefined && updates.color !== el.color) ||
+                                  (updates.fontFamily !== undefined && updates.fontFamily !== el.fontFamily) ||
+                                  (updates.fontSize !== undefined && updates.fontSize !== el.fontSize) ||
+                                  (updates.fontWeight !== undefined && updates.fontWeight !== el.fontWeight) ||
+                                  (updates.fontStyle !== undefined && updates.fontStyle !== el.fontStyle) ||
+                                  (updates.textDecoration !== undefined && updates.textDecoration !== el.textDecoration);
+
+            isModified = textChanged || srcChanged || xChanged || yChanged || wChanged || hChanged || rChanged || styleChanged;
           }
           return { 
             ...el, 

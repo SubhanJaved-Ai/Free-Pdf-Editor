@@ -51,68 +51,94 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
     const height = viewport.height;
     pageDimensions.push({ width, height });
     
-    // Extract text layout
+    // ─── Extract text layout ───────────────────────────────────────────────────
     const textContent = await page.getTextContent();
     
     textContent.items.forEach((item: any) => {
-      // item has str, transform, width, height, fontName
       if (!item.str || item.str.trim() === '') return;
       
-      // Look up real font object in page.commonObjs if available
-      let rawFontName = item.fontName;
+      // ── Font name: try to resolve the real font object from page resources
+      let rawFontName = item.fontName || '';
       if (page.commonObjs && typeof page.commonObjs.has === 'function' && page.commonObjs.has(item.fontName)) {
         const fontObj = page.commonObjs.get(item.fontName);
         if (fontObj) {
           rawFontName = fontObj.name || fontObj.fallbackName || item.fontName;
         }
       }
-
       const fontDetails = parsePdfFontName(rawFontName);
       
-      // Transform matrix coordinates [scaleX, skewY, skewX, scaleY, translateX, translateY]
+      // ── Transform: [scaleX, skewY, skewX, scaleY, translateX, translateY]
       const tx = item.transform[4];
       const ty = item.transform[5];
       
-      // Convert to page relative coordinates in viewport space
+      // Convert PDF user-space origin (bottom-left) to viewport space (top-left)
       const [x, y] = viewport.convertToViewportPoint(tx, ty);
       
-      // Bounding box dimensions
-      const itemHeight = Math.abs(item.transform[3] || 12);
-      const itemWidth = item.width || (item.str.length * itemHeight * 0.6);
+      // ── Font size (rendered height in CSS px at viewport scale = 1.0)
+      // The vertical scale component of the transform matrix gives the true glyph height.
+      // Math.abs(transform[3]) is the scaleY; Math.hypot handles rotated/skewed text.
+      const fontSizePx = Math.max(
+        Math.abs(item.transform[3]),
+        Math.hypot(item.transform[0], item.transform[1]),
+        6
+      );
       
-      // Create text element for overlay visual editing
-      const elementId = `orig-${pageIndex}-${Math.random().toString(36).substr(2, 9)}`;
+      // ── Width: use PDF-reported width when available; fall back to glyph estimate
+      const itemWidthPx = Math.max(
+        item.width || 0,
+        item.str.length * fontSizePx * 0.55
+      );
+      
+      // ── Color: PDF.js ≥ 4.x populates item.color as Uint8ClampedArray([R, G, B])
+      // This is the actual rendered fill color from the PDF graphics state.
+      let color = '#000000';
+      if (item.color && item.color.length >= 3) {
+        const r = item.color[0];
+        const g = item.color[1];
+        const b = item.color[2];
+        color = `rgb(${r},${g},${b})`;
+      }
+      
       const isRtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(item.str);
+      const elementId = `orig-${pageIndex}-${Math.random().toString(36).substr(2, 9)}`;
       
+      // Store all positions as % of page dimensions — consistent with all editor math
+      const xPct      = (x / width) * 100;
+      const yPct      = ((y - fontSizePx) / height) * 100;
+      const widthPct  = (itemWidthPx / width) * 100;
+      const heightPct = (fontSizePx / height) * 100;
+
       elements.push({
         id: elementId,
         pageIndex,
         type: 'text',
-        x: (x / width) * 100,
-        y: ((y - itemHeight) / height) * 100,
-        width: (itemWidth / width) * 100,
-        height: (itemHeight / height) * 100,
+        x: xPct,
+        y: yPct,
+        width: widthPct,
+        height: heightPct,
         rotation: 0,
         opacity: 1.0,
         text: item.str,
-        fontSize: itemHeight,
+        // Store the true CSS pixel size; EditorPage renders this directly as fontSize px.
+        // Because the page container uses transform:scale(zoom), this value is zoom-agnostic.
+        fontSize: fontSizePx,
         fontFamily: fontDetails.fontFamily,
         fontWeight: fontDetails.fontWeight,
         fontStyle: fontDetails.fontStyle,
-        color: '#000000',
+        color,
         align: isRtl ? 'right' : 'left',
         isOriginalPdfElement: true,
         isModified: false,
         isDeleted: false,
         originalText: item.str,
-        originalX: (x / width) * 100,
-        originalY: ((y - itemHeight) / height) * 100,
-        originalWidth: (itemWidth / width) * 100,
-        originalHeight: (itemHeight / height) * 100
+        originalX: xPct,
+        originalY: yPct,
+        originalWidth: widthPct,
+        originalHeight: heightPct,
       });
     });
 
-    // Extract native PDF images from operator list
+    // ─── Extract native PDF images from operator list ──────────────────────────
     try {
       const operatorList = await page.getOperatorList();
       const fnArray = operatorList.fnArray;
@@ -227,30 +253,4 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
     elements,
     totalPages
   };
-}
-
-// Convert native PDF font names to standard visual font equivalents
-function translateFontFamily(fontName?: string): string {
-  if (!fontName) return 'Helvetica';
-  
-  const name = fontName.toLowerCase();
-  if (name.includes('times') || name.includes('roman') || name.includes('serif')) {
-    return 'Times New Roman';
-  }
-  if (name.includes('courier') || name.includes('mono') || name.includes('code')) {
-    return 'Courier New';
-  }
-  if (name.includes('arial') || name.includes('sans')) {
-    return 'Arial';
-  }
-  
-  // Extract real font name if it's a subset like AAAAAA+OpenSans
-  if (fontName.includes('+')) {
-    const realName = fontName.split('+')[1];
-    // Add spaces before capital letters for camel case fonts, e.g., "OpenSans" -> "Open Sans"
-    const spacedName = realName.replace(/([A-Z])/g, ' $1').trim();
-    return spacedName || realName;
-  }
-  
-  return fontName;
 }

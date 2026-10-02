@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useEditorStore, EditorElement } from '../../store/useEditorStore';
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Minus, Plus, Check, X } from 'lucide-react';
-import { loadWebFontIfNeeded } from '../../utils/fontLoader';
+import { loadWebFontIfNeeded, getFontFallbackStack } from '../../utils/fontLoader';
 
 interface FloatingFormatToolbarProps {
   activeElement: EditorElement;
@@ -17,23 +17,20 @@ const FONT_FAMILIES = [
   'Trebuchet MS', 'Courier New', 'Inter', 'Poppins', 'Roboto',
   'Open Sans', 'Montserrat', 'Lato', 'Nunito', 'Merriweather',
   'Playfair Display', 'Oswald', 'Raleway', 'Ubuntu', 'Garamond',
+  'Calibri', 'Cambria',
 ];
 
 /**
  * FloatingFormatToolbar — the contextual rich-text toolbar that appears anchored
  * above any active text element, exactly like Google Docs / Adobe Acrobat.
  *
- * Responsibilities:
- *   • Bold / Italic / Underline toggles
- *   • Font family picker
- *   • Font size stepper (−/number/+)
- *   • Text alignment (L/C/R)
- *   • Text color swatch (delegates to a mini color input)
- *   • Confirm (blur) / Cancel (restore) buttons
- *
- * Positioning: placed above the element in page-percentage space, converted to
- * pixel offsets by the parent EditorPage. The toolbar never covers the text being
- * edited.
+ * DESIGN RULES (Canva-grade):
+ *  • ALWAYS initialise from activeElement — NEVER from global store defaults.
+ *  • Toolbar button clicks apply changes to the element AND live-patch the
+ *    contentEditable's inline style so the user sees results instantly.
+ *  • The X button triggers an Escape keydown on the contentEditable, which
+ *    restores the pre-edit snapshot (no data loss, full cancel semantics).
+ *  • The ✓ button blurs the contentEditable, committing the text.
  */
 export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
   activeElement,
@@ -43,23 +40,42 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
   const { updateElement } = useEditorStore();
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Local font family state for the dropdown (avoids triggering an element update on every keystroke)
+  // ── Local state mirrors the element's own properties (NOT global store defaults)
   const [fontFamily, setFontFamily] = useState(activeElement.fontFamily || 'Helvetica');
   const [fontSize, setFontSize] = useState(activeElement.fontSize || 14);
 
-  // Sync if active element changes while toolbar is open (e.g., click a different text element)
+  // Sync whenever the active element itself changes (e.g., clicking a different text box)
   useEffect(() => {
     setFontFamily(activeElement.fontFamily || 'Helvetica');
     setFontSize(activeElement.fontSize || 14);
   }, [activeElement.id, activeElement.fontFamily, activeElement.fontSize]);
 
+  // ── Helper: patch element in store AND live-update the DOM style ──────────────
+  const getEditNode = (): HTMLElement | null =>
+    document.getElementById(`text-edit-${activeElement.id}`);
+
   const update = (patch: Partial<EditorElement>) => {
+    // Persist to store
     updateElement(activeElement.id, patch);
+
+    // Live-patch the contentEditable DOM node so the user sees the change instantly
+    // without waiting for a React re-render cycle.
+    const node = getEditNode();
+    if (!node) return;
+    if (patch.fontFamily !== undefined) {
+      loadWebFontIfNeeded(patch.fontFamily);
+      node.style.fontFamily = getFontFallbackStack(patch.fontFamily);
+    }
+    if (patch.fontSize !== undefined) node.style.fontSize = `${patch.fontSize}px`;
+    if (patch.fontWeight !== undefined) node.style.fontWeight = patch.fontWeight;
+    if (patch.fontStyle !== undefined) node.style.fontStyle = patch.fontStyle;
+    if (patch.textDecoration !== undefined) node.style.textDecoration = patch.textDecoration;
+    if (patch.align !== undefined) node.style.textAlign = patch.align;
+    if (patch.color !== undefined) node.style.color = patch.color;
   };
 
   const handleFontFamilyChange = (family: string) => {
     setFontFamily(family);
-    loadWebFontIfNeeded(family);
     update({ fontFamily: family });
   };
 
@@ -69,19 +85,18 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
     update({ fontSize: clamped });
   };
 
-  // Position: render the toolbar above the element, centred horizontally on its left edge.
-  // elementRect is in CSS pixels inside the scaled page container.
+  // Position: render the toolbar above the element, aligned to its left edge.
   const TOOLBAR_HEIGHT = 44; // px
-  const GAP = 8; // gap between toolbar bottom and element top
+  const GAP = 8;
   const topPx = Math.max(0, elementRect.top - TOOLBAR_HEIGHT - GAP);
   const leftPx = Math.max(0, elementRect.left);
 
-  const isBold = activeElement.fontWeight === 'bold';
-  const isItalic = activeElement.fontStyle === 'italic';
+  const isBold      = activeElement.fontWeight === 'bold';
+  const isItalic    = activeElement.fontStyle === 'italic';
   const isUnderline = activeElement.textDecoration === 'underline';
-  const alignment = activeElement.align || 'left';
+  const alignment   = activeElement.align || 'left';
 
-  // Stop all pointer events from bubbling to the canvas (which would deselect the text)
+  // Stop all pointer events from bubbling to the canvas (would deselect the text)
   const stopProp = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
 
   return (
@@ -91,7 +106,6 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
       style={{
         top: topPx,
         left: leftPx,
-        // Never render off-screen to the right
         maxWidth: 'calc(100% - 16px)',
         fontSize: '13px',
         animation: 'fadeSlideIn 120ms ease-out both',
@@ -208,7 +222,6 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
           className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-700 transition-colors cursor-pointer"
           title="Text Color"
         >
-          {/* Coloured underline swatch — the A with colour strip below */}
           <span className="relative flex flex-col items-center gap-px">
             <span className="text-[13px] font-bold leading-none text-zinc-200">A</span>
             <span
@@ -220,7 +233,12 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
         <input
           id={`fmt-color-${activeElement.id}`}
           type="color"
-          value={activeElement.color || '#000000'}
+          value={
+            // Normalise rgb() format to #hex for the native color picker
+            activeElement.color?.startsWith('rgb')
+              ? rgbToHex(activeElement.color)
+              : (activeElement.color || '#000000')
+          }
           onChange={(e) => update({ color: e.target.value })}
           className="absolute opacity-0 w-0 h-0 pointer-events-none"
         />
@@ -229,11 +247,29 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
       {/* Separator */}
       <div className="w-px h-5 bg-white/10 mx-1 flex-shrink-0" />
 
-      {/* ── Confirm (blur) ────────────────────────────────────────── */}
+      {/* ── Cancel (Escape = restore snapshot) ────────────────────── */}
       <button
         onClick={() => {
-          // Blur the active contentEditable element — this triggers the onBlur save handler
-          const editNode = document.getElementById(`text-edit-${activeElement.id}`);
+          // Fire an Escape keydown on the contentEditable — this triggers the
+          // pre-edit snapshot restore logic in EditorPage's onKeyDown handler.
+          const editNode = getEditNode();
+          if (editNode) {
+            editNode.dispatchEvent(
+              new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+            );
+          }
+          onClose();
+        }}
+        title="Cancel (Esc)"
+        className="w-7 h-7 flex items-center justify-center rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition-colors"
+      >
+        <X size={13} />
+      </button>
+
+      {/* ── Confirm (blur + save) ──────────────────────────────────── */}
+      <button
+        onClick={() => {
+          const editNode = getEditNode();
           if (editNode) editNode.blur();
           onClose();
         }}
@@ -245,5 +281,16 @@ export const FloatingFormatToolbar: React.FC<FloatingFormatToolbarProps> = ({
     </div>
   );
 };
+
+// ─── Utility ──────────────────────────────────────────────────────────────────
+/** Convert CSS rgb(r,g,b) string to #rrggbb hex for native <input type="color"> */
+function rgbToHex(rgb: string): string {
+  const match = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+  if (!match) return '#000000';
+  const r = parseInt(match[1]).toString(16).padStart(2, '0');
+  const g = parseInt(match[2]).toString(16).padStart(2, '0');
+  const b = parseInt(match[3]).toString(16).padStart(2, '0');
+  return `#${r}${g}${b}`;
+}
 
 export default FloatingFormatToolbar;

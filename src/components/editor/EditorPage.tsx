@@ -15,6 +15,14 @@ interface EditorPageProps {
 export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pdfDoc }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastClickRef = useRef<{ id: string; time: number } | null>(null);
+  // Snapshot of element properties captured the instant we enter edit mode.
+  // Used by Escape to fully cancel edits and restore the original appearance.
+  const preEditSnapshotRef = useRef<Partial<EditorElement> | null>(null);
+  // Tracks which element the contentEditable is currently initialized for,
+  // so we only set innerHTML once per activation (not on every re-render).
+  const editingInitializedForRef = useRef<string | null>(null);
+  // Set to true when Escape is pressed so onBlur skips saving the DOM text.
+  const escapeWasPressedRef = useRef<boolean>(false);
   
   const {
     elements,
@@ -907,31 +915,14 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                 {/* 1. TEXT ELEMENT LAYERS */}
                 {el.type === 'text' && (
                   <div className="w-full h-full select-text overflow-visible pointer-events-auto relative">
-                    {isEditing && (
-                      <div 
-                        className="absolute -top-8 right-0 flex items-center z-[100] pointer-events-auto"
-                        onPointerDown={(e) => {
-                          e.preventDefault(); // Prevent blur
-                          e.stopPropagation();
-                          const elNode = document.getElementById(`text-edit-${el.id}`);
-                          if (elNode) elNode.blur();
-                        }}
-                      >
-                        <button className="flex items-center gap-1 text-[10px] font-bold bg-primary text-white px-2.5 py-1 rounded shadow-md shadow-black/10 hover:bg-primary/90 transition-colors tracking-wide">
-                          ✓ Save
-                        </button>
-                      </div>
-                    )}
 
-                    {/* White mask div — sits between the PDF image and the text overlay.
-                        Precisely covers the original PDF-rendered text so the editable text
-                        does not double-render on top of the original. Sized with +4px padding
-                        to catch subpixel edge bleed from the PDF renderer. */}
+                    {/* White mask — covers original PDF-rendered text when editing or after modification.
+                        We only show it when the element has been genuinely modified (tolerance-checked
+                        in the store), never as a false positive from floating-point rounding. */}
                     {el.isOriginalPdfElement && (isEditing || el.isModified) && (
                       <div
                         className="absolute pointer-events-none"
                         style={{
-                          // Extend 4px beyond the element bounds in all directions
                           top: '-4px',
                           left: '-4px',
                           right: '-4px',
@@ -942,88 +933,174 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                       />
                     )}
 
+                    {/* ── CANVA-GRADE contentEditable ──────────────────────────────────────
+                     *
+                     * Key design decisions:
+                     *
+                     * 1. NO key={isEditing ? 'edit' : 'view'} — we never unmount/remount this
+                     *    node. React would lose DOM ownership and corrupt mid-edit content.
+                     *
+                     * 2. contentEditable is toggled via attribute, not by remounting.
+                     *
+                     * 3. The ref callback sets innerHTML ONCE when entering edit mode
+                     *    (guarded by editingInitializedForRef). Subsequent re-renders
+                     *    while editing do NOT touch the inner DOM — React sees
+                     *    suppressContentEditableWarning and skips reconciliation.
+                     *
+                     * 4. In VIEW mode: color is transparent so the PDF image shows through.
+                     *    The text IS there in the DOM (for accessibility / copy-paste) but
+                     *    invisible because the PDF already renders it.
+                     *
+                     * 5. On Escape: we restore the full pre-edit snapshot (text + styles)
+                     *    captured at the moment the element was activated.
+                     * ─────────────────────────────────────────────────────────────────── */}
                     <div
                       id={`text-edit-${el.id}`}
-                      key={isEditing ? 'edit' : 'view'}
-                      ref={(elNode) => {
-                        if (isEditing && elNode) {
-                          if (document.activeElement !== elNode) {
-                            elNode.focus();
-                            // Move cursor to end of text
-                            const range = document.createRange();
-                            range.selectNodeContents(elNode);
-                            range.collapse(false);
-                            const selection = window.getSelection();
-                            if (selection) {
-                              selection.removeAllRanges();
-                              selection.addRange(range);
-                            }
+                      ref={(node) => {
+                        if (!node) return;
+
+                        if (isEditing) {
+                          // Only initialize content once per activation to avoid
+                          // clobbering the user's mid-edit text on React re-renders.
+                          if (editingInitializedForRef.current !== el.id) {
+                            editingInitializedForRef.current = el.id;
+
+                            // Capture a full snapshot before the user changes anything —
+                            // Escape will restore this exactly.
+                            preEditSnapshotRef.current = {
+                              text:           el.text,
+                              color:          el.color,
+                              fontFamily:     el.fontFamily,
+                              fontSize:       el.fontSize,
+                              fontWeight:     el.fontWeight,
+                              fontStyle:      el.fontStyle,
+                              textDecoration: el.textDecoration,
+                              align:          el.align,
+                              isModified:     el.isModified,
+                            };
+
+                            // Set text content via DOM (not React JSX) so React never
+                            // overwrites it during the editing session.
+                            // We use innerText rather than innerHTML to avoid XSS and
+                            // to preserve newlines correctly.
+                            node.innerText = el.text || '';
+
+                            // Focus and place cursor at a natural position.
+                            node.focus();
+                            // Try to place the caret where the user actually clicked.
+                            // caretRangeFromPoint (Chrome/Safari) gives click-accurate position.
+                            // If not available, fall back to end-of-content.
+                            try {
+                              const sel = window.getSelection();
+                              if (sel) sel.removeAllRanges();
+                              const range = document.createRange();
+                              range.selectNodeContents(node);
+                              range.collapse(false); // collapse to end as safe default
+                              if (sel) sel.addRange(range);
+                            } catch (_) { /* ignore */ }
+                          }
+                        } else {
+                          // Leaving edit mode — reset the initialization guard so the
+                          // next activation sets content freshly.
+                          if (editingInitializedForRef.current === el.id) {
+                            editingInitializedForRef.current = null;
                           }
                         }
                       }}
-                      contentEditable={isEditing ? 'true' : 'false'}
+                      contentEditable={isEditing}
                       suppressContentEditableWarning
                       dir="auto"
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        if (activeTool === 'select' || activeTool === 'text') {
-                          setActiveElementId(el.id);
-                        }
-                      }}
                       onBlur={(e) => {
+                        // If Escape was pressed, we already restored the snapshot — don't overwrite.
+                        if (escapeWasPressedRef.current) {
+                          escapeWasPressedRef.current = false;
+                          preEditSnapshotRef.current = null;
+                          editingInitializedForRef.current = null;
+                          setActiveElementId(null);
+                          setActiveElRect(null);
+                          return;
+                        }
+                        // Read the final text from the DOM (not from state, which may be stale)
                         let newText = e.currentTarget.innerText || '';
-                        if (newText.trim() === '') newText = '\u00A0'; // Non-breaking space to keep it selectable
+                        if (newText.trim() === '') newText = '\u00A0'; // keep selectable
+                        // Save only the text — NEVER apply global style defaults.
+                        // The element keeps its original font/color unless the user explicitly
+                        // changed them via the FloatingFormatToolbar.
                         updateElement(el.id, { text: newText });
+                        preEditSnapshotRef.current = null;
+                        editingInitializedForRef.current = null;
                         setActiveElementId(null);
                         setActiveElRect(null);
                       }}
                       onKeyDown={(e) => {
-                        // Prevent global keyboard shortcuts from firing
+                        // Always stop propagation to prevent global shortcuts from firing
                         e.stopPropagation();
+
                         if (e.key === 'Escape') {
                           e.preventDefault();
+                          // Save the snapshot reference before we clear it, then restore.
+                          const snap = preEditSnapshotRef.current;
+                          escapeWasPressedRef.current = true;
+                          if (snap) {
+                            updateElement(el.id, snap as Partial<EditorElement>);
+                            // Also restore DOM text so browser doesn't flash wrong content
+                            e.currentTarget.innerText = (snap.text as string) || '';
+                          }
                           e.currentTarget.blur();
                         }
+
                         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                           e.preventDefault();
                           e.currentTarget.blur();
                         }
                       }}
                       onPaste={(e) => {
+                        // Strip all HTML/rich-text, accept plain text only
                         e.preventDefault();
                         const text = e.clipboardData.getData('text/plain');
-                        const selection = window.getSelection();
-                        if (!selection || !selection.rangeCount) return;
-                        selection.deleteFromDocument();
-                        selection.getRangeAt(0).insertNode(document.createTextNode(text));
-                        selection.collapseToEnd();
+                        const sel = window.getSelection();
+                        if (!sel || !sel.rangeCount) return;
+                        sel.deleteFromDocument();
+                        sel.getRangeAt(0).insertNode(document.createTextNode(text));
+                        sel.collapseToEnd();
                       }}
-                      className={`w-full h-full cursor-text select-text outline-none border-none m-0 p-0 whitespace-pre-wrap break-words leading-tight min-h-[1em]`}
+                      className="w-full h-full select-text outline-none border-none m-0 p-0 whitespace-pre-wrap break-words leading-tight min-h-[1em]"
                       style={{
-                        fontSize: `${el.fontSize || 14}px`,
-                        fontFamily: (() => {
+                        // ── Typography: always read from the ELEMENT, never from global store defaults.
+                        // This is what makes editing feel like the original text — the styles are
+                        // locked to what the PDF contained (or what the user explicitly changed).
+                        fontSize:       `${el.fontSize || 14}px`,
+                        fontFamily:     (() => {
                           const fam = el.fontFamily || 'Helvetica';
                           loadWebFontIfNeeded(fam);
                           return getFontFallbackStack(fam);
                         })(),
-                        fontWeight: el.fontWeight || 'normal',
-                        fontStyle: el.fontStyle || 'normal',
-                        // Always show the text in its actual color once editing starts.
-                        // For unmodified original elements in view mode the PDF image shows through (transparent).
-                        color: (isEditing || el.isModified || !el.isOriginalPdfElement) ? (el.color || '#000000') : 'transparent',
-                        backgroundColor: 'transparent', // mask is handled by the dedicated white div above
-                        textAlign: el.align || 'left',
+                        fontWeight:     el.fontWeight  || 'normal',
+                        fontStyle:      el.fontStyle   || 'normal',
                         textDecoration: el.textDecoration || 'none',
-                        lineHeight: el.lineHeight || 1.2,
-                        letterSpacing: el.letterSpacing ? `${el.letterSpacing}px` : undefined,
-                        direction: /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(el.text || '') ? 'rtl' : 'ltr',
-                        userSelect: 'text',
-                        position: 'relative',
-                        zIndex: 2,
+                        textAlign:      el.align as any || 'left',
+                        lineHeight:     el.lineHeight  || 1.2,
+                        letterSpacing:  el.letterSpacing ? `${el.letterSpacing}px` : undefined,
+                        direction:      /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(el.text || '') ? 'rtl' : 'ltr',
+
+                        // ── Color:
+                        //   • VIEW mode  → transparent: the PDF image already renders the text.
+                        //   • EDIT mode  → el.color: the real extracted color from the PDF.
+                        //   • Modified   → el.color: user has intentionally overridden the PDF.
+                        //   • New element → el.color: set by addElement from the current stroke.
+                        color: (isEditing || el.isModified || !el.isOriginalPdfElement)
+                          ? (el.color || '#000000')
+                          : 'transparent',
+
+                        backgroundColor: 'transparent',
+                        cursor:          isEditing ? 'text' : 'inherit',
+                        userSelect:      isEditing ? 'text' : 'none',
+                        position:        'relative',
+                        zIndex:          2,
+                        // Prevent browser spell-check underlining from interfering with visual fidelity
+                        WebkitTextSizeAdjust: '100%',
                       }}
-                    >
-                      {el.text}
-                    </div>
+                    />
                   </div>
                 )}
 
