@@ -160,11 +160,21 @@ export async function parsePdfLayout(pdfBytesOrDoc: Uint8Array | any): Promise<P
       const isRtl = /[\u0600-\u06FF\u0750-\u077F\u0590-\u05FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(item.str);
       const elementId = `orig-${pageIndex}-${Math.random().toString(36).substr(2, 9)}`;
       
+      // ── Typographic Baseline Calibration ──────────────────────────────────────────
+      // In PDF.js viewport coordinates, (x, y) is the exact alphabetic baseline.
+      // In CSS, an element is placed by its top edge. With line-height: 1.15, the text
+      // baseline inside the box sits at (top + fontSizePx * 0.85).
+      // Placing top at y - (fontSizePx * 0.85) ensures that the CSS baseline coincides
+      // exactly with the PDF canvas baseline with 0px shift (no vertical jump or lift).
+      const baselineOffset = fontSizePx * 0.85;
+      const topPx = y - baselineOffset;
+      const heightPx = fontSizePx * 1.15; // clean line box height matching line-height * fontSize
+
       // Store all positions as % of page dimensions — consistent with all editor math
       const xPct      = (x / width) * 100;
-      const yPct      = ((y - fontSizePx) / height) * 100;
+      const yPct      = (topPx / height) * 100;
       const widthPct  = (itemWidthPx / width) * 100;
-      const heightPct = (fontSizePx / height) * 100;
+      const heightPct = (heightPx / height) * 100;
 
       elements.push({
         id: elementId,

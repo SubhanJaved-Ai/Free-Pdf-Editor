@@ -587,8 +587,6 @@ export async function exportEditedPdf(
         const opacity = el.opacity ?? 1.0;
         const sW = el.strokeWidth || 2;
 
-        console.log(`[SHAPE] ${el.shapeType} fill=${el.fillColor} stroke=${el.strokeColor} w=${elW.toFixed(0)}×${elH.toFixed(0)}`);
-
         // ── Circle / Ellipse → native drawEllipse ─────────────────────────
         if (el.shapeType === 'circle' || el.shapeType === 'ellipse') {
           page.drawEllipse({

@@ -24,6 +24,8 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
   const editingInitializedForRef = useRef<string | null>(null);
   // Set to true when Escape is pressed so onBlur skips saving the DOM text.
   const escapeWasPressedRef = useRef<boolean>(false);
+  // Stores the pointerdown coordinates when clicking an element to place caret accurately
+  const lastPointerDownCoordsRef = useRef<{ x: number; y: number } | null>(null);
   
   const {
     elements,
@@ -746,6 +748,7 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
     // In select mode: single click on any text element → immediately enter edit mode.
     // No double-click required, no tool switching needed.
     if (el.type === 'text' && (activeTool === 'select' || activeTool === 'text')) {
+      lastPointerDownCoordsRef.current = { x: e.clientX, y: e.clientY };
       if (activeElementId === elId) {
         // Already editing this text element! Let the browser handle caret/text interaction directly
         return;
@@ -888,10 +891,10 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
               position: 'absolute',
               left: `${el.x}%`,
               top: `${el.y}%`,
-              width: isEditing ? 'max-content' : `${el.width}%`,
+              width: `${el.width}%`,
               minWidth: isText ? `${el.width}%` : undefined,
               height: `${el.height}%`,
-              minHeight: isText ? `${Math.max(el.fontSize || 14, 16)}px` : undefined,
+              minHeight: isText ? `${el.fontSize || 14}px` : undefined,
               transform: `rotate(${el.rotation || 0}deg)`,
               opacity: el.opacity,
               zIndex: isSelected ? 30 : isEditing ? 25 : isText ? 15 : 5,
@@ -1018,17 +1021,49 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
 
                             // Focus and place cursor at a natural position.
                             node.focus();
+
                             // Try to place the caret where the user actually clicked.
-                            // caretRangeFromPoint (Chrome/Safari) gives click-accurate position.
-                            // If not available, fall back to end-of-content.
-                            try {
-                              const sel = window.getSelection();
-                              if (sel) sel.removeAllRanges();
-                              const range = document.createRange();
-                              range.selectNodeContents(node);
-                              range.collapse(false); // collapse to end as safe default
-                              if (sel) sel.addRange(range);
-                            } catch (_) { /* ignore */ }
+                            let placed = false;
+                            if (lastPointerDownCoordsRef.current) {
+                              const { x, y } = lastPointerDownCoordsRef.current;
+                              lastPointerDownCoordsRef.current = null;
+                              try {
+                                if ((document as any).caretPositionFromPoint) {
+                                  const pos = (document as any).caretPositionFromPoint(x, y);
+                                  if (pos && pos.offsetNode) {
+                                    const sel = window.getSelection();
+                                    if (sel) {
+                                      sel.removeAllRanges();
+                                      const r = document.createRange();
+                                      r.setStart(pos.offsetNode, pos.offset);
+                                      r.collapse(true);
+                                      sel.addRange(r);
+                                      placed = true;
+                                    }
+                                  }
+                                } else if ((document as any).caretRangeFromPoint) {
+                                  const r = (document as any).caretRangeFromPoint(x, y);
+                                  if (r) {
+                                    const sel = window.getSelection();
+                                    if (sel) {
+                                      sel.removeAllRanges();
+                                      sel.addRange(r);
+                                      placed = true;
+                                    }
+                                  }
+                                }
+                              } catch (_) { /* ignore */ }
+                            }
+                            if (!placed) {
+                              try {
+                                const sel = window.getSelection();
+                                if (sel) sel.removeAllRanges();
+                                const range = document.createRange();
+                                range.selectNodeContents(node);
+                                range.collapse(false); // collapse to end as safe default
+                                if (sel) sel.addRange(range);
+                              } catch (_) { /* ignore */ }
+                            }
                           }
                         } else {
                           // Leaving edit mode — reset the initialization guard so the
@@ -1064,26 +1099,33 @@ export const EditorPage: React.FC<EditorPageProps> = React.memo(({ pageIndex, pd
                         }
                         if (newText.trim() === '') newText = '\u00A0'; // keep selectable
 
-                        // Measure rendered size so bounding box and masks wrap accurately
-                        let updatedWidth = el.width;
-                        let updatedHeight = el.height;
-                        if (containerRef.current) {
-                          const pageRect = containerRef.current.getBoundingClientRect();
-                          const textRect = e.currentTarget.getBoundingClientRect();
-                          if (pageRect.width > 0 && textRect.width > 0) {
-                            const wPct = (textRect.width / pageRect.width) * 100;
-                            const hPct = (textRect.height / pageRect.height) * 100;
-                            updatedWidth = Math.max(el.originalWidth || 0, wPct);
-                            updatedHeight = Math.max(el.originalHeight || 0, hPct);
-                          }
-                        }
+                        const snap = preEditSnapshotRef.current;
+                        const textActuallyChanged = newText !== (el.originalText ?? el.text);
+                        const fontChanged = snap ? (el.fontSize !== snap.fontSize || el.fontFamily !== snap.fontFamily) : false;
 
-                        // Save the text & updated dimensions
-                        updateElement(el.id, {
-                          text: newText,
-                          width: updatedWidth,
-                          height: updatedHeight,
-                        });
+                        // Only measure and update dimensions if the user actually modified text or font.
+                        // If user simply clicked on an element and blurred without changes, preserve
+                        // original PDF layout metrics without spurious modification flags or dimension jitter.
+                        if (textActuallyChanged || fontChanged) {
+                          let updatedWidth = el.width;
+                          let updatedHeight = el.height;
+                          if (containerRef.current) {
+                            const pageRect = containerRef.current.getBoundingClientRect();
+                            const textRect = e.currentTarget.getBoundingClientRect();
+                            if (pageRect.width > 0 && textRect.width > 0) {
+                              const wPct = (textRect.width / pageRect.width) * 100;
+                              const hPct = (textRect.height / pageRect.height) * 100;
+                              updatedWidth = Math.max(el.originalWidth || 0, wPct);
+                              updatedHeight = Math.max(el.originalHeight || 0, hPct);
+                            }
+                          }
+
+                          updateElement(el.id, {
+                            text: newText,
+                            width: updatedWidth,
+                            height: updatedHeight,
+                          });
+                        }
                         preEditSnapshotRef.current = null;
                         editingInitializedForRef.current = null;
 

@@ -1,51 +1,112 @@
-# AI Ecommerce Decision Intelligence Platform
+# Aether PDF Editor
 
-## Project Overview
-Build an AI-powered ecommerce intelligence platform that helps ecommerce merchants understand exactly where profit is leaking and what actions they should take. We use deterministic rules to analyze Shopify and Meta Ads data, and OpenAI to explain the issues in human-readable terms. **This is not an analytics dashboard; this is an action-driven decision intelligence tool.**
+A powerful, browser-based PDF editor built with Next.js 16, React 19, and pdf-lib. Edit text, draw shapes, annotate, add images, use OCR, and export professional PDFs — all client-side with zero server uploads.
 
-## Architecture Summary
-- **Frontend/Backend:** Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui.
-- **Database & Auth:** Supabase (PostgreSQL).
-- **Core Logic:** Hardcoded TypeScript Rule Engine (No RAG, No Agents) run via Vercel Cron.
-- **AI Integration:** OpenAI API for natural language translation of deterministic rule triggers.
-- **External Integrations:** Shopify and Meta Ads APIs.
+## ✨ Features
 
-## Setup Instructions
-*(Note: These are placeholder instructions for when we initialize the Next.js and Supabase project)*
-1. Clone the repository.
-2. Run `npm install`.
-3. Copy `.env.example` to `.env.local` and fill in the required keys (Supabase, OpenAI, Shopify, Meta).
-4. Run `npm run dev` to start the development server.
-5. Apply Supabase migrations to initialize the database schema.
+- **Text Editing** — Click any text element to edit it in-place with full font/color/size control
+- **Shape Drawing** — Rectangle, circle, ellipse, triangle, arrow, line, and custom SVG paths
+- **Image Insertion** — Drag-and-drop or paste images directly onto any page
+- **Annotations** — Highlight, underline, strikethrough, freehand drawing
+- **OCR** — Extract text from scanned PDFs via Tesseract.js (runs fully in-browser)
+- **PDF Tools** — Merge, split, compress, rotate, crop, reorder, delete pages, add watermarks, page numbers, and more
+- **Export** — Exports the final PDF with all edits baked in via pdf-lib
+- **Auto-Save** — Edits are continuously saved to IndexedDB for session recovery
+- **Creator Branding** — Built by Subhan Javed
 
-## Documentation Navigation
+## 🛠 Tech Stack
 
-This project utilizes a detailed project memory system to ensure continuity and context sharing. All architectural and contextual decisions are documented in the `docs/` folder. Treat these files as the absolute source of truth.
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| UI | React 19, Tailwind CSS v4, Framer Motion |
+| PDF Rendering | pdfjs-dist 5 |
+| PDF Export | pdf-lib |
+| OCR | Tesseract.js 7 |
+| State | Zustand 5 |
+| Persistence | idb-keyval (IndexedDB) |
+| Icons | Lucide React |
 
-- [00. Project Overview](./docs/00_PROJECT_OVERVIEW.md)
-- [01. Product Vision](./docs/01_PRODUCT_VISION.md)
-- [02. Problem Statement](./docs/02_PROBLEM_STATEMENT.md)
-- [03. V1 Scope](./docs/03_V1_SCOPE.md)
-- [04. Tech Stack](./docs/04_TECH_STACK.md)
-- [05. System Architecture](./docs/05_SYSTEM_ARCHITECTURE.md)
-- [06. Folder Structure](./docs/06_FOLDER_STRUCTURE.md)
-- [07. Database Architecture](./docs/07_DATABASE_ARCHITECTURE.md)
-- [08. Auth Architecture](./docs/08_AUTH_ARCHITECTURE.md)
-- [09. API Architecture](./docs/09_API_ARCHITECTURE.md)
-- [10. Shopify Integration](./docs/10_SHOPIFY_INTEGRATION.md)
-- [11. Meta Ads Integration](./docs/11_META_ADS_INTEGRATION.md)
-- [12. AI Logic System](./docs/12_AI_LOGIC_SYSTEM.md)
-- [13. Rule Engine](./docs/13_RULE_ENGINE.md)
-- [14. Sync Architecture](./docs/14_SYNC_ARCHITECTURE.md)
-- [15. Env Variables](./docs/15_ENV_VARIABLES.md)
-- [16. Coding Standards](./docs/16_CODING_STANDARDS.md)
-- [17. UI/UX Principles](./docs/17_UI_UX_PRINCIPLES.md)
-- [18. Security Guidelines](./docs/18_SECURITY_GUIDELINES.md)
-- [19. Build Roadmap](./docs/19_BUILD_ROADMAP.md)
-- [20. Decision Log](./docs/20_DECISION_LOG.md)
-- [21. Todo](./docs/21_TODO.md)
-- [22. Project Context for New Chat](./docs/22_PROJECT_CONTEXT_FOR_NEW_CHAT.md)
+## 🚀 Getting Started
 
-## Context Refresher
+```bash
+# Install dependencies
+npm install
 
-When starting a new session or inviting a new developer, copy the contents of `docs/22_PROJECT_CONTEXT_FOR_NEW_CHAT.md` to instantly regain context.
+# Run development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx              # Landing page
+│   ├── layout.tsx            # Root layout + metadata
+│   ├── globals.css           # Global styles & design tokens
+│   ├── editor/               # Main PDF editor route
+│   └── tools/                # Individual PDF tool pages
+│       ├── merge-pdf/
+│       ├── split-pdf/
+│       ├── compress-pdf/
+│       ├── rotate-pdf/
+│       ├── crop-pdf/
+│       ├── reorder-pages/
+│       ├── delete-pages/
+│       ├── extract-pages/
+│       ├── add-watermark/
+│       ├── page-numbers/
+│       ├── redact-pdf/
+│       ├── resize-pdf/
+│       ├── unlock-pdf/
+│       ├── ocr-pdf/
+│       ├── pdf-to-jpg/
+│       ├── jpg-to-pdf/
+│       ├── batch-rename/
+│       └── edit-metadata/
+├── components/
+│   ├── editor/               # Editor canvas, toolbars, sidebars
+│   ├── landing/              # Landing page components
+│   ├── layout/               # Navbar, Footer
+│   └── common/               # Shared UI components
+├── store/
+│   └── useEditorStore.ts     # Zustand editor state
+├── hooks/
+│   └── useAutoSave.ts        # IndexedDB session persistence
+├── utils/
+│   ├── pdfParser.ts          # PDF text/image element extraction
+│   ├── pdfExporter.ts        # PDF export with pdf-lib
+│   ├── pdf-tools.ts          # Merge, split, compress, etc.
+│   ├── fontLoader.ts         # Google Fonts fetcher for export
+│   ├── colorExtractor.ts     # Canvas-based color sampling
+│   ├── ocrWorker.ts          # Tesseract.js OCR integration
+│   └── shapeDefinitions.ts   # SVG path definitions for shapes
+└── config/
+    └── branding.ts           # App-wide branding constants
+```
+
+## 📜 Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start development server |
+| `npm run build` | Build production bundle |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+
+## 🌐 Deployment
+
+This project is configured for [Netlify](https://netlify.com) via `netlify.toml`.
+
+```bash
+npm run build
+```
+
+The `out/` or `.next/` directory is served by the hosting platform.
+
+## 👤 Author
+
+**Subhan Javed** — [LinkedIn](https://linkedin.com/in/subhan-javed)

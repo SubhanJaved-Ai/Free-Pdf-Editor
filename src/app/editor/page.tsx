@@ -240,7 +240,6 @@ export default function EditorPage() {
           setIsExporting(false);
           return;
         }
-        console.info(`[EXPORT] Font substitution occurred for: ${fontList}`);
       }
 
       // Trigger file download

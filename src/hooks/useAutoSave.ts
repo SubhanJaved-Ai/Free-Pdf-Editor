@@ -61,7 +61,6 @@ async function performSave(): Promise<boolean> {
     _lastSaveTime = Date.now();
     _saveStatus = 'saved';
     notifyListeners();
-    console.log('[AutoSave] Session saved to IndexedDB.');
     return true;
   } catch (e) {
     console.error('[AutoSave] Failed to save session', e);
