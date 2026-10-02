@@ -3,26 +3,32 @@
 import React from 'react';
 import Link from 'next/link';
 import { FileText, ArrowRight, ShieldCheck } from 'lucide-react';
+import { CreatorBranding } from '../common/CreatorBranding';
 
 export function Navbar() {
   return (
     <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/80 transition-all duration-300">
       <div className="max-w-7xl mx-auto flex justify-between items-center h-16 px-6">
         
-        {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
-            <FileText size={18} strokeWidth={2} />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-base text-slate-900 tracking-tight leading-none group-hover:text-indigo-600 transition-colors">
-              AetherPDF
-            </span>
-            <span className="text-[10px] font-medium text-slate-500 tracking-wider uppercase">
-              Precision Editor
-            </span>
-          </div>
-        </Link>
+        {/* Brand Logo & Creator Attribution */}
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+              <FileText size={18} strokeWidth={2} />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-bold text-base text-slate-900 tracking-tight leading-none group-hover:text-indigo-600 transition-colors">
+                AetherPDF
+              </span>
+              <span className="text-[10px] font-medium text-slate-500 tracking-wider uppercase">
+                Precision Editor
+              </span>
+            </div>
+          </Link>
+
+          {/* Subhan Javed Creator Branding */}
+          <CreatorBranding variant="navbar" className="hidden sm:flex" />
+        </div>
         
         {/* Navigation Links */}
         <div className="hidden md:flex items-center gap-8">

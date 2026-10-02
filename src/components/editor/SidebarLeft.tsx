@@ -3,6 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useEditorStore } from '../../store/useEditorStore';
 import { Plus, Trash2, Copy, Layers, ArrowUp, ArrowDown, X, FileText } from 'lucide-react';
+import { CreatorBranding } from '../common/CreatorBranding';
 
 interface PageThumbnailProps {
   pdfDoc: unknown;
@@ -264,6 +265,11 @@ export const SidebarLeft: React.FC<SidebarLeftProps> = ({ pdfDoc }) => {
           <Plus size={13} className="text-primary" />
           Add Blank Page
         </button>
+
+        {/* Creator Attribution */}
+        <div className="pt-4 pb-2 flex justify-center border-t border-outline-variant/20 mt-3">
+          <CreatorBranding variant="toolbar" />
+        </div>
       </div>
     </aside>
   );

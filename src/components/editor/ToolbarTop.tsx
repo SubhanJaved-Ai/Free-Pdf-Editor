@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEditorStore } from '../../store/useEditorStore';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
 import { manualSave } from '../../hooks/useAutoSave';
+import { CreatorBranding } from '../common/CreatorBranding';
 import { 
   Pointer, 
   Type, 
@@ -318,6 +319,9 @@ export const ToolbarTop: React.FC<ToolbarTopProps> = ({ onExport, onUploadClick,
             Veltis<span className="text-primary">PDF</span>
           </span>
         </div>
+
+        {/* Creator Attribution: Made by Subhan Javed */}
+        <CreatorBranding variant="toolbar" className="hidden sm:flex" />
 
         <div className="h-5 w-px bg-outline-variant/30 hidden md:block" />
 

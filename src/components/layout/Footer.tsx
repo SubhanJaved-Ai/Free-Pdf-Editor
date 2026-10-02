@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { FileText, ShieldCheck, Zap } from 'lucide-react';
+import { CreatorBranding } from '../common/CreatorBranding';
 
 export function Footer() {
   return (
@@ -8,13 +9,17 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
         
         {/* Brand Summary */}
-        <div className="flex flex-col items-center md:items-start gap-2">
+        <div className="flex flex-col items-center md:items-start gap-3">
           <div className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
               <FileText size={16} strokeWidth={2} />
             </div>
             <span className="font-bold text-base text-white tracking-tight">AetherPDF</span>
           </div>
+
+          {/* Creator Profile Branding */}
+          <CreatorBranding variant="footer" />
+
           <p className="text-xs text-slate-400 max-w-sm text-center md:text-left">
             Precision engineering for digital documents. 100% in-browser processing with zero server uploads. Fast, private, and free.
           </p>
@@ -35,8 +40,8 @@ export function Footer() {
             <span className="flex items-center gap-1"><ShieldCheck size={13} className="text-emerald-400" strokeWidth={2} /> 100% Client-Side</span>
             <span className="flex items-center gap-1"><Zap size={13} className="text-amber-400" strokeWidth={2} /> WebAssembly Speed</span>
           </div>
-          <div className="text-[11px] text-slate-500">
-            © {new Date().getFullYear()} AetherPDF. All rights reserved.
+          <div className="text-[11px] text-slate-500 text-center md:text-right">
+            © {new Date().getFullYear()} AetherPDF • Made by Subhan Javed. All rights reserved.
           </div>
         </div>
 
