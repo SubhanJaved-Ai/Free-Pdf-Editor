@@ -110,3 +110,9 @@ The `out/` or `.next/` directory is served by the hosting platform.
 ## 👤 Author
 
 **Subhan Javed** — [LinkedIn](https://www.linkedin.com/in/subhan-javed-2180a9440?utm_source=share_via&utm_content=profile&utm_medium=member_android)
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
+
+Copyright © 2026 Subhan Javed.
